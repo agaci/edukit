@@ -39,6 +39,7 @@ const config: Config = {
       fontFamily: {
         display: ["var(--font-nunito)", "Nunito", "system-ui", "sans-serif"],
         sans: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
+        hand: ["Caveat", "cursive"],
       },
       borderRadius: {
         "2xl": "1rem",

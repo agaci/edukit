@@ -42,8 +42,13 @@ export function Logo({
         </g>
       </svg>
       {withText && (
-        <span className="font-display text-2xl font-extrabold tracking-tight text-ink">
-          Edu<span className="text-primary">Kit</span>
+        <span className="inline-flex items-end gap-1.5">
+          <span className="font-display text-2xl font-extrabold tracking-tight text-ink">
+            Edu<span className="text-primary">Kit</span>
+          </span>
+          <span className="font-hand text-xl font-bold leading-none text-secondary -rotate-6 translate-y-0.5">
+            by Caldas
+          </span>
         </span>
       )}
     </span>
