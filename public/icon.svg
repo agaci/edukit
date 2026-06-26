@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#84CC16"/>
+  <!-- Lápis -->
+  <g transform="rotate(35 256 256)">
+    <rect x="226" y="120" width="60" height="240" rx="16" fill="#FBBF24"/>
+    <rect x="226" y="120" width="60" height="40" rx="16" fill="#F87171"/>
+    <path d="M226 360h60l-30 56-30-56Z" fill="#1E293B"/>
+    <path d="M240 392h32l-16 28-16-28Z" fill="#475569"/>
+  </g>
+  <!-- Estrela -->
+  <path d="M150 120l16 34 37 5-27 26 7 37-33-18-33 18 7-37-27-26 37-5z" fill="#FFFFFF"/>
+</svg>
