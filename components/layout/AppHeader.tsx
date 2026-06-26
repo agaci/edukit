@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, GraduationCap, User } from "lucide-react";
+import { LogOut, GraduationCap, User, BookOpenText } from "lucide-react";
 import { Logo } from "@/components/layout/Logo";
 import { useAuth } from "@/components/auth/AuthProvider";
 
@@ -15,25 +15,37 @@ export function AppHeader() {
           <Logo size={32} />
         </Link>
 
-        {user && (
-          <div className="flex items-center gap-2 sm:gap-3">
-            <span className="flex items-center gap-1.5 rounded-2xl bg-slate-100 px-3 py-1.5 text-sm font-bold text-ink">
-              {user.role === "tutor" ? (
-                <GraduationCap size={16} className="text-secondary" />
-              ) : (
-                <User size={16} className="text-primary-dark" />
-              )}
-              <span className="max-w-[140px] truncate">{user.displayName}</span>
-            </span>
-            <button
-              onClick={() => logout()}
-              aria-label="Sair"
-              className="flex items-center justify-center gap-1.5 rounded-2xl p-2.5 text-slate-400 transition hover:bg-slate-100 hover:text-danger focus:outline-none focus-visible:ring-4 focus-visible:ring-danger/20"
-            >
-              <LogOut size={20} />
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Link
+            href="/manual"
+            className="flex items-center gap-1.5 rounded-2xl px-3 py-2 text-sm font-bold text-slate-500 transition hover:bg-slate-100 hover:text-ink focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+          >
+            <BookOpenText size={18} />
+            <span className="hidden sm:inline">Manual</span>
+          </Link>
+
+          {user && (
+            <>
+              <span className="flex items-center gap-1.5 rounded-2xl bg-slate-100 px-3 py-1.5 text-sm font-bold text-ink">
+                {user.role === "tutor" ? (
+                  <GraduationCap size={16} className="text-secondary" />
+                ) : (
+                  <User size={16} className="text-primary-dark" />
+                )}
+                <span className="max-w-[140px] truncate">
+                  {user.displayName}
+                </span>
+              </span>
+              <button
+                onClick={() => logout()}
+                aria-label="Sair"
+                className="flex items-center justify-center gap-1.5 rounded-2xl p-2.5 text-slate-400 transition hover:bg-slate-100 hover:text-danger focus:outline-none focus-visible:ring-4 focus-visible:ring-danger/20"
+              >
+                <LogOut size={20} />
+              </button>
+            </>
+          )}
+        </div>
       </nav>
     </header>
   );
