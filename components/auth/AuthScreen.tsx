@@ -47,13 +47,16 @@ export function AuthScreen() {
   useEffect(() => {
     if (mode !== "tutor-register" || !displayName.trim()) return;
     let active = true;
-    suggestUsername(displayName)
-      .then((r) => {
-        if (active) setUsername(r.username);
-      })
-      .catch(() => setUsername(slugifyUsername(displayName)));
+    const t = setTimeout(() => {
+      suggestUsername(displayName)
+        .then((r) => {
+          if (active) setUsername(r.username);
+        })
+        .catch(() => active && setUsername(slugifyUsername(displayName)));
+    }, 400);
     return () => {
       active = false;
+      clearTimeout(t);
     };
   }, [displayName, mode]);
 

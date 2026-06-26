@@ -21,7 +21,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3009
+ENV PORT=3010
 ENV HOSTNAME=0.0.0.0
 
 # Utilizador não-root por segurança
@@ -35,6 +35,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 USER nextjs
 
-EXPOSE 3009
+EXPOSE 3010
 
 CMD ["node", "server.js"]

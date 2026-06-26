@@ -204,11 +204,14 @@ function AddStudentModal({
       return;
     }
     let active = true;
-    suggestUsername(name)
-      .then((r) => active && setUsername(r.username))
-      .catch(() => active && setUsername(slugifyUsername(name)));
+    const t = setTimeout(() => {
+      suggestUsername(name)
+        .then((r) => active && setUsername(r.username))
+        .catch(() => active && setUsername(slugifyUsername(name)));
+    }, 400);
     return () => {
       active = false;
+      clearTimeout(t);
     };
   }, [name]);
 
