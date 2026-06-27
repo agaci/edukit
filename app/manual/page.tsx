@@ -5,9 +5,12 @@ import {
   ArrowLeft,
   GraduationCap,
   User,
+  Users,
   PencilLine,
   BookOpen,
   Calculator,
+  Languages,
+  BookOpenText,
   ListChecks,
   Award,
   ShieldCheck,
@@ -15,9 +18,10 @@ import {
   Sparkles,
   UserPlus,
   KeyRound,
-  Volume2,
-  Camera,
-  Timer,
+  CalendarClock,
+  RotateCcw,
+  Copy,
+  BarChart3,
 } from "lucide-react";
 import { Logo } from "@/components/layout/Logo";
 import { Card } from "@/components/ui/Card";
@@ -94,13 +98,23 @@ function ModuleBlock({
   );
 }
 
+function Tip({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <div className="flex items-start gap-2 rounded-2xl bg-primary/10 p-3 text-sm text-primary-dark">
+      <span className="mt-0.5 shrink-0">{icon}</span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
 const TOC = [
   { href: "#intro", label: "O que é o EduKit" },
-  { href: "#perfis", label: "Tutor e Aluno" },
+  { href: "#contas", label: "Contas: Tutor e Aluno" },
   { href: "#tutor", label: "Guia do Tutor" },
   { href: "#aluno", label: "Guia do Aluno" },
-  { href: "#modulos", label: "Os três módulos" },
-  { href: "#notas", label: "Como são as notas" },
+  { href: "#exercicios", label: "Os tipos de exercício" },
+  { href: "#notas", label: "Notas e repetições" },
+  { href: "#resultados", label: "Resultados e evolução" },
   { href: "#problemas", label: "Resolução de problemas" },
   { href: "#privacidade", label: "Privacidade" },
 ];
@@ -128,9 +142,7 @@ export default function ManualPage() {
 
       {/* Índice */}
       <Card className="bg-secondary/5">
-        <h2 className="mb-3 font-display text-lg font-extrabold text-ink">
-          Índice
-        </h2>
+        <h2 className="mb-3 font-display text-lg font-extrabold text-ink">Índice</h2>
         <div className="grid gap-2 sm:grid-cols-2">
           {TOC.map((t) => (
             <a
@@ -148,31 +160,29 @@ export default function ManualPage() {
       <Section id="intro" icon={<Sparkles size={22} />} title="O que é o EduKit">
         <p>
           O EduKit é uma aplicação de treino escolar com correção por inteligência
-          artificial. Tem três módulos — <strong>Ditado</strong>,{" "}
-          <strong>Compreensão Escrita</strong> e <strong>Matemática</strong> — e
-          adapta o conteúdo ao ano escolar escolhido, do 1.º ao 12.º ano.
+          artificial, do <strong>1.º ao 12.º ano</strong>. O{" "}
+          <strong>tutor</strong> (pai, mãe ou professor) monta testes à medida e
+          atribui-os aos <strong>alunos</strong>; cada aluno entra, resolve os
+          exercícios em sequência e recebe uma nota por exercício e uma nota final.
         </p>
         <p>
-          O <strong>tutor</strong> (pai, mãe ou professor) cria trabalhos e
-          atribui-os a um <strong>aluno</strong>. O aluno entra, faz os exercícios
-          em sequência e recebe uma nota por exercício e uma nota final.
+          Um teste pode juntar qualquer combinação de seis tipos de exercício:
+          Ditado, Compreensão Escrita, Matemática e três de Inglês (duas traduções
+          e uma interpretação). O conteúdo adapta-se ao ano e à dificuldade
+          escolhidos.
         </p>
       </Section>
 
-      {/* Perfis */}
-      <Section
-        id="perfis"
-        icon={<ListChecks size={22} />}
-        title="Tutor e Aluno"
-      >
+      {/* Contas */}
+      <Section id="contas" icon={<Users size={22} />} title="Contas: Tutor e Aluno">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-2xl border border-slate-100 p-4">
             <Badge tone="secondary" className="mb-2">
               <GraduationCap size={14} /> Tutor
             </Badge>
             <p className="text-sm">
-              Cria a sua conta, regista alunos, gera trabalhos de 3 exercícios e
-              acompanha as notas de cada aluno.
+              Cria a sua conta, regista alunos, monta e atribui testes, acompanha
+              notas e a evolução de cada aluno.
             </p>
           </div>
           <div className="rounded-2xl border border-slate-100 p-4">
@@ -180,63 +190,108 @@ export default function ManualPage() {
               <User size={14} /> Aluno
             </Badge>
             <p className="text-sm">
-              Entra com o utilizador e PIN que o tutor lhe deu, vê os trabalhos
-              por fazer e resolve-os em sequência.
+              Entra com o utilizador e PIN que o tutor lhe deu e vê logo os
+              trabalhos que tem para fazer.
             </p>
           </div>
         </div>
         <p className="rounded-2xl bg-slate-50 p-3 text-sm">
-          <strong>Nomes únicos:</strong> cada aluno tem um nome de utilizador
-          único (gerado a partir do nome — ex.: <em>Maria</em> → <code>maria</code>
-          ; se já existir, <code>maria2</code>). O nome a mostrar pode repetir-se;
-          o utilizador é que distingue cada aluno.
+          <strong>Nomes únicos:</strong> cada aluno tem um nome de utilizador único
+          (gerado a partir do nome — ex.: <em>Maria</em> → <code>maria</code>; se já
+          existir, <code>maria2</code>). O nome a mostrar pode repetir-se; o
+          utilizador é que distingue cada aluno. É com{" "}
+          <strong>utilizador + PIN</strong> que o aluno entra.
         </p>
       </Section>
 
       {/* Guia do Tutor */}
-      <Section
-        id="tutor"
-        icon={<GraduationCap size={22} />}
-        title="Guia do Tutor"
-      >
+      <Section id="tutor" icon={<GraduationCap size={22} />} title="Guia do Tutor">
+        <h3 className="font-display font-extrabold text-ink">1. Conta e alunos</h3>
         <Steps
           items={[
             <>
-              <strong>Criar conta.</strong> No ecrã inicial escolhe{" "}
-              <em>Criar conta de tutor</em> e define nome, utilizador e
-              palavra-passe.
+              <strong>Cria a tua conta</strong> de tutor (nome, utilizador,
+              palavra-passe).
             </>,
             <>
-              <strong>Adicionar alunos.</strong> No painel, em{" "}
-              <em>Adicionar aluno</em>, escreve o nome do aluno. O EduKit sugere um
-              utilizador único; define um <strong>PIN de 4 dígitos</strong> e
-              entrega ao aluno o <strong>utilizador + PIN</strong>.
-            </>,
-            <>
-              <strong>Criar um trabalho.</strong> Em <em>Criar trabalho</em> geras,
-              em sequência, os três exercícios (Ditado, Compreensão e Matemática).
-              Em cada um descreves o tema, escolhes o ano e a dificuldade, e o
-              EduKit gera o conteúdo — podes pré-ver e <em>regenerar</em> ou{" "}
-              <em>aceitar</em>.
-            </>,
-            <>
-              <strong>Atribuir ao aluno.</strong> No fim, escolhes o aluno da tua
-              lista. O trabalho fica logo disponível para ele.
-            </>,
-            <>
-              <strong>Ver as notas.</strong> No painel vês cada trabalho, o seu
-              estado e as notas — por exercício e a <strong>nota final</strong>{" "}
-              (média das três).
+              Em <em>Adicionar aluno</em>, escreve o nome, escolhe o{" "}
+              <strong>ano escolar</strong> (1.º–12.º) e define um{" "}
+              <strong>PIN de 4 a 6 dígitos</strong>. Entrega ao aluno o{" "}
+              <strong>utilizador + PIN</strong>.
             </>,
           ]}
         />
-        <div className="flex items-start gap-2 rounded-2xl bg-primary/10 p-3 text-sm text-primary-dark">
-          <UserPlus size={18} className="mt-0.5 shrink-0" />
-          <span>
-            Dica: cria primeiro os alunos e só depois os trabalhos — assim podes
-            atribuir logo no fim da criação.
-          </span>
-        </div>
+
+        <h3 className="mt-2 font-display font-extrabold text-ink">
+          2. Montar um teste (à la carte)
+        </h3>
+        <Steps
+          items={[
+            <>
+              Em <em>Criar trabalho</em>, no primeiro passo{" "}
+              <strong>escolhes os exercícios</strong> que queres incluir (um ou
+              mais dos seis tipos). A ordem é a ordem por que os escolheres.
+            </>,
+            <>
+              Configuras cada exercício (tema, ano, dificuldade…) e o EduKit{" "}
+              <strong>gera o conteúdo</strong> — podes pré-ver e{" "}
+              <em>regenerar</em> ou <em>aceitar</em>.
+            </>,
+          ]}
+        />
+
+        <h3 className="mt-2 font-display font-extrabold text-ink">
+          3. Atribuir (a um aluno ou a um grupo)
+        </h3>
+        <Steps
+          items={[
+            <>
+              No fim, escolhes <strong>um ou vários alunos</strong> — com atalhos{" "}
+              <em>Todos</em> e por ano (ex.: &quot;todos do 3.º ano&quot;).
+            </>,
+            <>
+              Podes definir um <strong>prazo</strong> opcional. Sem prazo, o
+              trabalho fica sempre disponível; com prazo, marca{" "}
+              <strong>&quot;atrasado&quot;</strong> se o aluno não terminar a tempo
+              (mas não o bloqueia).
+            </>,
+          ]}
+        />
+
+        <h3 className="mt-2 font-display font-extrabold text-ink">
+          4. Ver, repetir e criar semelhante
+        </h3>
+        <ul className="space-y-2 text-sm">
+          <li className="flex items-start gap-2">
+            <BookOpen size={16} className="mt-0.5 shrink-0 text-secondary" />
+            <span>
+              <strong>Ver o teste completo:</strong> clica num trabalho para veres o{" "}
+              <strong>enunciado original</strong>, a <strong>resposta do aluno</strong>
+              , a correção e o estado de cada exercício.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <RotateCcw size={16} className="mt-0.5 shrink-0 text-secondary" />
+            <span>
+              <strong>Repetir teste:</strong> repõe o mesmo teste para o aluno o
+              fazer de novo; a nota anterior fica no{" "}
+              <strong>histórico de tentativas</strong> (para veres a evolução).
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Copy size={16} className="mt-0.5 shrink-0 text-secondary" />
+            <span>
+              <strong>Criar semelhante:</strong> gera um teste parecido (mas nunca
+              igual) na <strong>dificuldade que escolheres</strong> — para subir ou
+              descer o grau.
+            </span>
+          </li>
+        </ul>
+
+        <Tip icon={<UserPlus size={18} />}>
+          Cria primeiro os alunos e só depois os testes — assim podes atribuir logo
+          no fim da criação.
+        </Tip>
       </Section>
 
       {/* Guia do Aluno */}
@@ -244,33 +299,37 @@ export default function ManualPage() {
         <Steps
           items={[
             <>
-              <strong>Entrar.</strong> Usa o <strong>utilizador + PIN</strong> que o
+              <strong>Entra</strong> com o <strong>utilizador + PIN</strong> que o
               tutor te deu.
             </>,
             <>
-              <strong>Ver os trabalhos.</strong> Ao entrares, vês logo os trabalhos
-              que tens para fazer.
+              Vês logo os <strong>trabalhos por fazer</strong> (e o prazo, se
+              existir).
             </>,
             <>
-              <strong>Fazer em sequência.</strong> Abre um trabalho e resolve os
-              três exercícios, um a seguir ao outro.
+              Abre um trabalho e <strong>resolve os exercícios em sequência</strong>
+              , um a seguir ao outro.
             </>,
             <>
-              <strong>Ver as notas.</strong> No fim vês a nota de cada exercício e a{" "}
-              <strong>nota final</strong> (a média das três).
+              No fim, vês a nota de cada exercício e a <strong>nota final</strong>{" "}
+              (a média de todos).
             </>,
           ]}
         />
-        <div className="flex items-start gap-2 rounded-2xl bg-secondary/10 p-3 text-sm text-secondary-dark">
-          <KeyRound size={18} className="mt-0.5 shrink-0" />
-          <span>
-            Esqueceste o PIN? Pede ao teu tutor — é ele que gere os acessos.
-          </span>
-        </div>
+        <Tip icon={<KeyRound size={18} />}>
+          Esqueceste o PIN? Pede ao teu tutor — é ele que gere os acessos.
+        </Tip>
       </Section>
 
-      {/* Módulos */}
-      <Section id="modulos" icon={<BookOpen size={22} />} title="Os três módulos">
+      {/* Exercícios */}
+      <Section
+        id="exercicios"
+        icon={<ListChecks size={22} />}
+        title="Os tipos de exercício"
+      >
+        <p className="text-sm">
+          Um teste pode ter qualquer combinação destes seis tipos:
+        </p>
         <div className="space-y-4">
           <ModuleBlock
             icon={<PencilLine size={18} className="text-primary-dark" />}
@@ -278,19 +337,10 @@ export default function ManualPage() {
             accent="bg-primary/15"
           >
             <p>
-              Ouves um texto lido em voz alta e escreves o que ouves — no teclado
-              (enquanto ouves) ou em papel, fotografando depois.
-            </p>
-            <p className="flex items-center gap-1.5">
-              <Volume2 size={14} className="text-secondary" />
-              Controlas o <strong>ritmo</strong>: a voz lê sempre natural e o que
-              muda é a <strong>pausa entre palavras</strong>, para teres tempo de
-              escrever.
-            </p>
-            <p>
-              A nota tem em conta os erros (ortografia, acentuação, pontuação,
-              maiúsculas) <strong>e quanto do texto escreveste</strong> — escrever
-              só uma parte dá nota proporcional.
+              Ouves um texto lido em voz alta (controlas o <strong>ritmo</strong>:
+              a pausa entre palavras) e escreves no teclado ou em papel
+              (fotografando). A nota tem em conta os erros{" "}
+              <strong>e quanto do texto escreveste</strong>.
             </p>
           </ModuleBlock>
 
@@ -299,15 +349,10 @@ export default function ManualPage() {
             title="Compreensão Escrita"
             accent="bg-secondary/15"
           >
-            <p className="flex items-center gap-1.5">
-              <Timer size={14} className="text-secondary" />
-              Lês um texto durante um tempo definido. Depois o texto{" "}
-              <strong>fecha e não volta a abrir</strong>.
-            </p>
             <p>
-              Escreves, por palavras tuas, sobre o que leste. És avaliado em quatro
-              critérios: compreensão do tema, coerência, vocabulário e
-              ortografia/gramática.
+              Lês um texto durante um tempo; depois o texto <strong>fecha</strong> e
+              escreves, por palavras tuas, sobre o que leste. Avaliado em quatro
+              critérios.
             </p>
           </ModuleBlock>
 
@@ -316,25 +361,43 @@ export default function ManualPage() {
             title="Matemática"
             accent="bg-warning/15"
           >
-            <p className="flex items-center gap-1.5">
-              <Camera size={14} className="text-secondary" />
-              Resolves os exercícios no papel (podes imprimir) e fotografas a
-              resolução.
-            </p>
             <p>
-              O EduKit analisa o teu <strong>raciocínio passo a passo</strong>, não
-              só o resultado final. Um processo certo com erro de cálculo vale a
-              maior parte da pontuação.
+              Resolves no papel (podes imprimir) e fotografas. O EduKit analisa o{" "}
+              <strong>raciocínio passo a passo</strong>, não só o resultado.
+            </p>
+          </ModuleBlock>
+
+          <ModuleBlock
+            icon={<Languages size={18} className="text-secondary-dark" />}
+            title="Tradução Inglês → Português / Português → Inglês"
+            accent="bg-secondary/15"
+          >
+            <p>
+              O EduKit gera um texto numa língua e tu escreves a tradução na outra.
+              É avaliada a fidelidade ao sentido, a gramática e a expressão.
+            </p>
+          </ModuleBlock>
+
+          <ModuleBlock
+            icon={<BookOpenText size={18} className="text-primary-dark" />}
+            title="Interpretação de Inglês (escolha múltipla)"
+            accent="bg-primary/15"
+          >
+            <p>
+              Lês um texto em inglês e respondes a perguntas de{" "}
+              <strong>escolha múltipla</strong> (estilo americano). A correção é{" "}
+              <strong>automática</strong>, com revisão pergunta a pergunta.
             </p>
           </ModuleBlock>
         </div>
       </Section>
 
       {/* Notas */}
-      <Section id="notas" icon={<Award size={22} />} title="Como são as notas">
+      <Section id="notas" icon={<Award size={22} />} title="Notas e repetições">
         <p>
           Cada exercício recebe uma nota de <strong>0 a 20</strong>. A{" "}
-          <strong>nota final</strong> de um trabalho é a média das três notas.
+          <strong>nota final</strong> de um trabalho é a média das notas de todos os
+          exercícios.
         </p>
         <div className="flex flex-wrap gap-2">
           <Badge tone="danger">0–9 · vermelho</Badge>
@@ -343,9 +406,35 @@ export default function ManualPage() {
           <Badge tone="primary">18–20 · dourado</Badge>
         </div>
         <p className="text-sm text-slate-500">
-          Além da nota, o EduKit dá sempre um feedback do &quot;professor&quot; e,
-          quando há erros, mostra a correção com uma explicação simples.
+          Quando o tutor manda <strong>repetir</strong> um teste, a nota fica
+          guardada e o aluno volta a resolvê-lo com o mesmo enunciado — assim dá
+          para comparar a evolução entre tentativas.
         </p>
+      </Section>
+
+      {/* Resultados */}
+      <Section
+        id="resultados"
+        icon={<BarChart3 size={22} />}
+        title="Resultados e evolução"
+      >
+        <p>
+          No painel do tutor, em <strong>Resultados</strong>, encontras gráficos com:
+        </p>
+        <ul className="space-y-2 text-sm">
+          <li>
+            <strong>Média por tipo de exercício</strong> — onde os alunos estão
+            melhores ou precisam de treino.
+          </li>
+          <li>
+            <strong>Desempenho por aluno</strong> — média e uma linha de evolução
+            ao longo dos testes.
+          </li>
+          <li>
+            <strong>Melhoria com as repetições</strong> — a subida (ou descida) da
+            nota de cada tentativa do mesmo teste.
+          </li>
+        </ul>
       </Section>
 
       {/* Problemas */}
@@ -357,21 +446,23 @@ export default function ManualPage() {
         <ul className="space-y-3 text-sm">
           <li>
             <strong>O ditado não tem voz.</strong> O navegador pode não ter uma voz
-            portuguesa instalada. Usa o Chrome ou o Edge, ou escolhe a voz nas
-            Definições do tutor.
+            portuguesa. Usa o Chrome ou o Edge, ou escolhe a voz nas Definições.
           </li>
           <li>
             <strong>A foto saiu ilegível.</strong> O EduKit pede para repetir.
-            Procura boa luz, sem sombras, e enquadra a folha inteira com a letra
-            bem visível.
+            Procura boa luz e enquadra a folha inteira com a letra bem visível.
           </li>
           <li>
             <strong>Não consigo entrar.</strong> Confirma o utilizador e o PIN com o
             tutor. O utilizador é tudo em minúsculas, sem espaços nem acentos.
           </li>
-          <li>
-            <strong>O tempo acabou na compreensão.</strong> É normal — o trabalho é
-            entregue automaticamente com o que escreveste até ao momento.
+          <li className="flex items-start gap-2">
+            <CalendarClock size={16} className="mt-0.5 shrink-0 text-warning" />
+            <span>
+              <strong>Apareceu &quot;atrasado&quot;.</strong> O prazo passou, mas
+              ainda podes terminar — fica apenas assinalado como entregue fora do
+              prazo.
+            </span>
           </li>
         </ul>
       </Section>
@@ -384,7 +475,8 @@ export default function ManualPage() {
       >
         <ul className="space-y-2 text-sm">
           <li>
-            As contas e os trabalhos ficam guardados na base de dados do EduKit.
+            As contas, os testes e as notas ficam guardados na base de dados do
+            EduKit, protegidos por início de sessão.
           </li>
           <li>
             As fotos são enviadas apenas para correção e não são guardadas pela
