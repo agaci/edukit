@@ -26,60 +26,81 @@ export async function GET() {
   return NextResponse.json({ assignments: docs.map(toAssignmentDTO) });
 }
 
-// Cria um trabalho (3 exercícios) para um aluno do tutor.
+// Cria um trabalho para um ou mais alunos do tutor (atribuição em grupo).
 export async function POST(req: Request) {
   const g = await requireRole("tutor");
   if (g.error) return g.error;
 
   try {
     const body = (await req.json()) as {
-      studentId?: string;
+      studentId?: string; // compatibilidade (1 aluno)
+      studentIds?: string[]; // grupo
       title?: string;
       exercises?: StoredExercise[];
+      dueDate?: string | null;
     };
     const exercises = body.exercises ?? [];
+    const rawIds = body.studentIds?.length
+      ? body.studentIds
+      : body.studentId
+        ? [body.studentId]
+        : [];
+    const ids = Array.from(new Set(rawIds)).filter((x) => ObjectId.isValid(x));
 
-    if (!body.studentId || !ObjectId.isValid(body.studentId)) {
-      return NextResponse.json({ error: "Aluno inválido." }, { status: 400 });
+    if (ids.length === 0) {
+      return NextResponse.json({ error: "Escolhe pelo menos um aluno." }, { status: 400 });
     }
-    if (exercises.length !== 3) {
+    if (exercises.length < 1) {
       return NextResponse.json(
-        { error: "Um trabalho tem de ter exactamente 3 exercícios." },
+        { error: "O trabalho tem de ter pelo menos 1 exercício." },
         { status: 400 }
       );
     }
 
+    // Prazo opcional.
+    let dueDate: Date | undefined;
+    if (body.dueDate) {
+      const d = new Date(body.dueDate);
+      if (!Number.isNaN(d.getTime())) dueDate = d;
+    }
+
     const users = await usersCol();
-    const student = await users.findOne({
-      _id: new ObjectId(body.studentId),
-      role: "student",
-      tutorId: new ObjectId(g.user.id),
-    });
-    if (!student) {
+    const tutorId = new ObjectId(g.user.id);
+    const students = await users
+      .find({
+        _id: { $in: ids.map((x) => new ObjectId(x)) },
+        role: "student",
+        tutorId,
+      })
+      .toArray();
+    if (students.length !== ids.length) {
       return NextResponse.json(
-        { error: "Esse aluno não existe ou não é teu." },
+        { error: "Um ou mais alunos não existem ou não são teus." },
         { status: 404 }
       );
     }
 
-    const items: AssignmentItem[] = exercises.map((exercise) => ({ exercise }));
-    const doc: AssignmentDoc = {
-      tutorId: new ObjectId(g.user.id),
+    const now = new Date();
+    const docs: AssignmentDoc[] = students.map((student) => ({
+      tutorId,
       tutorName: g.user.displayName,
       studentId: student._id!,
       studentUsername: student.username,
       studentName: student.displayName,
       title: body.title?.trim() || undefined,
       status: "pending",
-      items,
-      createdAt: new Date(),
-    };
+      items: exercises.map((exercise): AssignmentItem => ({ exercise })),
+      dueDate,
+      createdAt: now,
+    }));
 
     const col = await assignmentsCol();
-    const { insertedId } = await col.insertOne(doc);
-    return NextResponse.json({
-      assignment: toAssignmentDTO({ ...doc, _id: insertedId }),
-    });
+    const { insertedIds } = await col.insertMany(docs);
+    const created = docs.map((doc, i) =>
+      toAssignmentDTO({ ...doc, _id: insertedIds[i] })
+    );
+
+    return NextResponse.json({ assignments: created, count: created.length });
   } catch (error) {
     console.error("[/api/assignments POST]", error);
     const message =

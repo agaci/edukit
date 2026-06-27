@@ -7,7 +7,13 @@ import {
 } from "@/lib/models";
 import { requireRole } from "@/lib/guard";
 import type { ImagePayload } from "@/lib/anthropic";
-import { gradeDitado, gradeCompreensao, gradeMatematica } from "@/lib/grade";
+import {
+  gradeDitado,
+  gradeCompreensao,
+  gradeMatematica,
+  gradeTraducao,
+  gradeInterpretacao,
+} from "@/lib/grade";
 import type { AssignmentItem, ExerciseResult, MathResult } from "@/types";
 
 export const runtime = "nodejs";
@@ -30,6 +36,7 @@ export async function POST(
       photoBase64?: string;
       mimeType?: string;
       timeSpent?: number;
+      answers?: number[]; // interpretação (escolha múltipla)
     };
 
     const col = await assignmentsCol();
@@ -69,7 +76,25 @@ export async function POST(
         gradeLevel: exercise.gradeLevel,
         timeSpent: body.timeSpent,
       });
+    } else if (
+      exercise.type === "traducao-en-pt" ||
+      exercise.type === "traducao-pt-en"
+    ) {
+      result = await gradeTraducao({
+        sourceText: exercise.sourceText,
+        direction: exercise.type === "traducao-en-pt" ? "en-pt" : "pt-en",
+        studentText: body.studentText ?? "",
+        gradeLevel: exercise.gradeLevel,
+        timeSpent: body.timeSpent,
+      });
+    } else if (exercise.type === "interpretacao-en") {
+      result = gradeInterpretacao({
+        questions: exercise.questions,
+        answers: body.answers ?? [],
+        timeSpent: body.timeSpent,
+      });
     } else {
+      // matemática
       if (!image) {
         return NextResponse.json(
           { error: "Falta a fotografia da resolução." },
@@ -89,12 +114,14 @@ export async function POST(
       result = math;
     }
 
-    // Actualiza o item resolvido.
+    // Actualiza o item resolvido (guarda a resposta do aluno para o tutor ver).
     const updatedItem: AssignmentItem = {
       ...item,
       result,
       score: result.score,
       completedAt: new Date().toISOString(),
+      studentAnswer: image ? undefined : body.studentText,
+      viaPhoto: !!image,
     };
     const items = [...doc.items];
     items[index] = updatedItem;

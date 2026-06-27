@@ -211,4 +211,76 @@ Para "correct" usa exactamente um destes valores: "correct", "partial" ou "incor
 Responde APENAS com JSON válido, sem markdown, neste formato exacto:
 {"score": 0.0, "feedback": "...", "illegible": false, "exerciseResults": [{"exerciseId": 1, "studentAnswer": "...", "correct": "correct", "partialCredit": 1.0, "correctAnswer": "...", "explanation": "..."}], "corrections": []}
 `.trim(),
+
+  // --- Geração: texto-fonte para tradução -----------------------------------
+  gerarTraducaoTexto: (
+    gradeLevel: number,
+    difficulty: Difficulty,
+    direction: "en-pt" | "pt-en"
+  ): string => `
+És um professor de Inglês do ${nivel(gradeLevel)} português. Vais gerar um TEXTO para o aluno traduzir.
+
+${
+  direction === "en-pt"
+    ? "O texto deve estar em INGLÊS (o aluno vai traduzi-lo para português europeu)."
+    : "O texto deve estar em PORTUGUÊS europeu (o aluno vai traduzi-lo para inglês)."
+}
+
+Regras:
+- Adequado ao ${gradeLevel}.º ano, dificuldade ${DIFFICULTY_PT[difficulty]}.
+- Vocabulário e estruturas frásicas apropriados ao nível.
+- Comprimento: curto nos anos iniciais, mais longo nos avançados (entre 30 e 140 palavras).
+- Frases claras, com sentido completo, sobre um tema do quotidiano.
+
+Responde APENAS com JSON válido, sem markdown, neste formato exacto:
+{"text": "..."}
+`.trim(),
+
+  // --- Geração: interpretação de inglês (escolha múltipla) ------------------
+  gerarInterpretacaoIngles: (
+    gradeLevel: number,
+    difficulty: Difficulty,
+    count: number
+  ): string => `
+És um professor de Inglês do ${nivel(gradeLevel)} português. Gera um TEXTO em INGLÊS e ${count} perguntas de ESCOLHA MÚLTIPLA (estilo americano) sobre o texto.
+
+Regras:
+- Texto em inglês, adequado ao ${gradeLevel}.º ano, dificuldade ${DIFFICULTY_PT[difficulty]}.
+- As perguntas e as opções devem estar em INGLÊS.
+- Cada pergunta tem exactamente 4 opções e UMA única correcta.
+- As perguntas exigem compreensão do texto; as opções erradas devem ser plausíveis.
+
+Responde APENAS com JSON válido, sem markdown, neste formato exacto:
+{"text": "...", "questions": [{"question": "...", "options": ["...", "...", "...", "..."], "correctIndex": 0}]}
+
+"correctIndex" é o índice (a começar em 0) da opção correcta.
+`.trim(),
+
+  // --- Correção de tradução --------------------------------------------------
+  corrigirTraducao: (
+    sourceText: string,
+    direction: "en-pt" | "pt-en",
+    gradeLevel: number
+  ): string => `
+És um professor de Inglês do ${nivel(gradeLevel)} português. O aluno do ${gradeLevel}.º ano fez uma tradução ${
+    direction === "en-pt" ? "de Inglês para Português" : "de Português para Inglês"
+  }.
+
+Texto ORIGINAL (${direction === "en-pt" ? "inglês" : "português"}):
+${sourceText}
+
+Avalia a tradução do aluno segundo:
+- Fidelidade ao sentido do original (50%)
+- Correcção gramatical e ortográfica na língua de chegada (30%)
+- Naturalidade e expressão (20%)
+
+Instruções:
+- Ajusta a exigência ao ${gradeLevel}.º ano.
+- Atribui nota de 0 a 20 com uma casa decimal.
+- Lista os principais erros em "corrections" (original = trecho do aluno, correct = forma melhor, explanation = explicação simples).
+- Feedback encorajador e construtivo (2 a 3 frases).
+
+Responde APENAS com JSON válido, sem markdown, neste formato exacto:
+{"score": 0.0, "feedback": "...", "corrections": [{"original": "...", "correct": "...", "explanation": "..."}]}
+`.trim(),
 };

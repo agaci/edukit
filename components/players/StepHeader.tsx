@@ -4,6 +4,9 @@ const TYPE_LABEL: Record<string, string> = {
   ditado: "Ditado",
   compreensao: "Compreensão",
   matematica: "Matemática",
+  "traducao-en-pt": "Inglês→PT",
+  "traducao-pt-en": "PT→Inglês",
+  "interpretacao-en": "Interpretação EN",
 };
 
 export function StepHeader({

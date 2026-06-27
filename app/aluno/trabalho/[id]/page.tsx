@@ -11,10 +11,12 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { DitadoPlayer } from "@/components/players/DitadoPlayer";
 import { CompreensaoPlayer } from "@/components/players/CompreensaoPlayer";
 import { MatematicaPlayer } from "@/components/players/MatematicaPlayer";
+import { TraducaoPlayer } from "@/components/players/TraducaoPlayer";
+import { InterpretacaoPlayer } from "@/components/players/InterpretacaoPlayer";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { getAssignment, submitAssignmentItem } from "@/lib/api";
-import { scoreColor, moduleName } from "@/lib/utils";
+import { scoreColor, exerciseLabelShort } from "@/lib/utils";
 import type { AssignmentDTO, StoredExercise } from "@/types";
 import type { SubmitPayload, SubmitResponse } from "@/components/players/types";
 
@@ -123,6 +125,29 @@ export default function TrabalhoPage({ params }: { params: { id: string } }) {
           step={step}
         />
       )}
+      {(ex.type === "traducao-en-pt" || ex.type === "traducao-pt-en") && (
+        <TraducaoPlayer
+          key={index}
+          exercise={
+            ex as Extract<
+              StoredExercise,
+              { type: "traducao-en-pt" | "traducao-pt-en" }
+            >
+          }
+          submit={submit}
+          onDone={onDone}
+          step={step}
+        />
+      )}
+      {ex.type === "interpretacao-en" && (
+        <InterpretacaoPlayer
+          key={index}
+          exercise={ex as Extract<StoredExercise, { type: "interpretacao-en" }>}
+          submit={submit}
+          onDone={onDone}
+          step={step}
+        />
+      )}
     </div>
   );
 }
@@ -149,16 +174,16 @@ function Summary({
 
       <Card className="flex flex-col items-center">
         <span className="mb-2 flex items-center gap-2 font-display font-bold text-slate-500">
-          <Trophy size={18} className="text-gold" /> Nota final (média das 3)
+          <Trophy size={18} className="text-gold" /> Nota final (média)
         </span>
         <ScoreDisplay score={assignment.finalScore ?? 0} />
       </Card>
 
       <div className="grid gap-3 sm:grid-cols-3">
         {assignment.items.map((it, i) => (
-          <Card key={i} className="flex flex-col items-center py-5">
+          <Card key={i} className="flex flex-col items-center py-5 text-center">
             <span className="text-sm font-semibold text-slate-400">
-              {moduleName(it.exercise.type)}
+              {exerciseLabelShort(it.exercise.type)}
             </span>
             <span
               className={`mt-1 font-display text-3xl font-extrabold ${

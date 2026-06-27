@@ -5,6 +5,7 @@ import type {
   AssignmentItem,
   AssignmentStatus,
   AuthUser,
+  PastAttempt,
   Role,
 } from "@/types";
 
@@ -19,6 +20,7 @@ export interface UserDoc {
   displayName: string;
   secretHash: string; // password (tutor) ou PIN (aluno), com bcrypt
   tutorId?: ObjectId; // para alunos: tutor que o criou
+  gradeLevel?: number; // para alunos: ano escolar (1 a 12)
   createdAt: Date;
 }
 
@@ -33,6 +35,9 @@ export interface AssignmentDoc {
   status: AssignmentStatus;
   items: AssignmentItem[];
   finalScore?: number;
+  dueDate?: Date;
+  attemptNumber?: number;
+  attempts?: PastAttempt[]; // arquivado em formato DTO (datas em ISO)
   createdAt: Date;
   completedAt?: Date;
 }
@@ -68,6 +73,9 @@ export function toAssignmentDTO(doc: AssignmentDoc): AssignmentDTO {
     status: doc.status,
     items: doc.items,
     finalScore: doc.finalScore,
+    dueDate: doc.dueDate?.toISOString(),
+    attemptNumber: doc.attemptNumber,
+    attempts: doc.attempts,
     createdAt: doc.createdAt.toISOString(),
     completedAt: doc.completedAt?.toISOString(),
   };

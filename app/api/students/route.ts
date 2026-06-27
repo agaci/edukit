@@ -49,6 +49,7 @@ export async function GET() {
     id: s._id!.toString(),
     username: s.username,
     displayName: s.displayName,
+    gradeLevel: s.gradeLevel,
     createdAt: s.createdAt.toISOString(),
     assignmentsCount: countMap.get(s._id!.toString()) ?? 0,
   }));
@@ -66,9 +67,11 @@ export async function POST(req: Request) {
       displayName?: string;
       username?: string;
       pin?: string;
+      gradeLevel?: number;
     };
     const displayName = (body.displayName ?? "").trim();
     const pin = (body.pin ?? "").trim();
+    const gradeLevel = Math.min(12, Math.max(1, Number(body.gradeLevel) || 1));
 
     if (!displayName) {
       return NextResponse.json({ error: "Indica o nome do aluno." }, { status: 400 });
@@ -108,6 +111,7 @@ export async function POST(req: Request) {
       displayName,
       secretHash: await hashSecret(pin),
       tutorId: new ObjectId(g.user.id),
+      gradeLevel,
       createdAt: new Date(),
     };
     const { insertedId } = await col.insertOne(doc);
@@ -116,6 +120,7 @@ export async function POST(req: Request) {
       id: insertedId.toString(),
       username,
       displayName,
+      gradeLevel,
       createdAt: doc.createdAt.toISOString(),
       assignmentsCount: 0,
     };

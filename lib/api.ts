@@ -65,6 +65,7 @@ export function createStudent(input: {
   displayName: string;
   username?: string;
   pin: string;
+  gradeLevel: number;
 }): Promise<{ student: StudentSummary }> {
   return req("/api/students", {
     method: "POST",
@@ -88,11 +89,18 @@ export function getAssignment(id: string): Promise<{ assignment: AssignmentDTO }
   return req(`/api/assignments/${id}`);
 }
 
+export function repeatAssignment(
+  id: string
+): Promise<{ assignment: AssignmentDTO }> {
+  return req(`/api/assignments/${id}/repeat`, { method: "POST" });
+}
+
 export function createAssignment(input: {
-  studentId: string;
+  studentIds: string[];
   title?: string;
   exercises: StoredExercise[];
-}): Promise<{ assignment: AssignmentDTO }> {
+  dueDate?: string | null;
+}): Promise<{ assignments: AssignmentDTO[]; count: number }> {
   return req("/api/assignments", {
     method: "POST",
     body: JSON.stringify(input),
@@ -107,6 +115,7 @@ export function submitAssignmentItem(
     photoBase64?: string;
     mimeType?: string;
     timeSpent?: number;
+    answers?: number[];
   }
 ): Promise<{
   result: ExerciseResult | MathResult;

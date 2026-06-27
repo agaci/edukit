@@ -47,6 +47,25 @@ export interface ExerciseResult {
   timeSpent?: number; // segundos
   readableText?: string; // texto lido de uma foto (manuscrito), quando aplicável
   illegible?: boolean; // foto ilegível — pedir para repetir
+  mcResults?: McAnswer[]; // respostas de escolha múltipla (interpretação)
+}
+
+// --- Escolha múltipla (interpretação de inglês) -------------------------------
+
+export interface McQuestion {
+  id: number;
+  question: string;
+  options: string[];
+  correctIndex: number;
+}
+
+export interface McAnswer {
+  questionId: number;
+  question: string;
+  options: string[];
+  selectedIndex: number;
+  correctIndex: number;
+  correct: boolean;
 }
 
 // --- Geração de texto ----------------------------------------------------------
@@ -128,6 +147,7 @@ export interface StudentSummary {
   id: string;
   username: string;
   displayName: string;
+  gradeLevel?: number; // ano escolar (1 a 12)
   createdAt: string;
   assignmentsCount: number;
 }
@@ -154,16 +174,47 @@ export type StoredExercise =
       type: "matematica";
       gradeLevel: number;
       exercises: Exercise[];
+    }
+  | {
+      // Tradução de Inglês -> Português (sourceText em inglês).
+      type: "traducao-en-pt";
+      gradeLevel: number;
+      sourceText: string;
+    }
+  | {
+      // Tradução de Português -> Inglês (sourceText em português).
+      type: "traducao-pt-en";
+      gradeLevel: number;
+      sourceText: string;
+    }
+  | {
+      // Interpretação de texto em inglês com perguntas de escolha múltipla.
+      type: "interpretacao-en";
+      gradeLevel: number;
+      text: string;
+      questions: McQuestion[];
     };
+
+export type StoredExerciseType = StoredExercise["type"];
 
 export interface AssignmentItem {
   exercise: StoredExercise;
   result?: ExerciseResult | MathResult;
   score?: number; // 0-20
   completedAt?: string;
+  studentAnswer?: string; // texto entregue pelo aluno (teclado)
+  viaPhoto?: boolean; // entregue por fotografia
 }
 
 export type AssignmentStatus = "pending" | "in_progress" | "completed";
+
+// Tentativa anterior arquivada (para o histórico de repetições).
+export interface PastAttempt {
+  attemptNumber: number;
+  items: AssignmentItem[];
+  finalScore?: number;
+  completedAt?: string;
+}
 
 export interface AssignmentDTO {
   id: string;
@@ -175,7 +226,10 @@ export interface AssignmentDTO {
   title?: string;
   status: AssignmentStatus;
   items: AssignmentItem[];
-  finalScore?: number; // média das 3 notas
+  finalScore?: number; // média das notas
+  dueDate?: string; // prazo (ISO); ausente = sem prazo
+  attemptNumber?: number; // tentativa atual (1 = primeira)
+  attempts?: PastAttempt[]; // tentativas anteriores (mais antiga primeiro)
   createdAt: string;
   completedAt?: string;
 }

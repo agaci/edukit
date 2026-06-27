@@ -8,11 +8,15 @@ import {
   RefreshCw,
   CheckCircle2,
   ArrowLeft,
+  ArrowRight,
   Send,
   PencilLine,
   BookOpen,
   Calculator,
+  Languages,
+  BookOpenText,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -27,30 +31,39 @@ import {
 import { GradeSelect } from "@/components/ui/GradeSelect";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
-import { gerarTexto, gerarExercicios } from "@/lib/client";
+import {
+  gerarTexto,
+  gerarExercicios,
+  gerarTraducao,
+  gerarInterpretacao,
+} from "@/lib/client";
 import { listStudents, createAssignment } from "@/lib/api";
-import { difficultyLabel } from "@/lib/utils";
+import { difficultyLabel, cn, exerciseLabelShort } from "@/lib/utils";
 import type {
   Difficulty,
   ExerciseType,
   InputMode,
+  McQuestion,
   StoredExercise,
+  StoredExerciseType,
   StudentSummary,
 } from "@/types";
 
-const STEPS = [
+const ALL_TYPES: { type: StoredExerciseType; label: string; icon: LucideIcon }[] = [
   { type: "ditado", label: "Ditado", icon: PencilLine },
   { type: "compreensao", label: "Compreensão", icon: BookOpen },
   { type: "matematica", label: "Matemática", icon: Calculator },
-  { type: "assign", label: "Atribuir", icon: Send },
-] as const;
+  { type: "traducao-en-pt", label: "Inglês → Português", icon: Languages },
+  { type: "traducao-pt-en", label: "Português → Inglês", icon: Languages },
+  { type: "interpretacao-en", label: "Interpretação (Inglês)", icon: BookOpenText },
+];
 
 export default function CriarTrabalhoPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const { toast } = useToast();
 
-  const [step, setStep] = useState(0);
+  const [picked, setPicked] = useState<StoredExerciseType[]>([]);
+  const [step, setStep] = useState(0); // 0 = escolher; 1..N = config; N+1 = atribuir
   const [built, setBuilt] = useState<StoredExercise[]>([]);
 
   useEffect(() => {
@@ -75,12 +88,14 @@ export default function CriarTrabalhoPage() {
       router.replace("/");
       return;
     }
-    // built.length === step, por isso ao recuar para o passo anterior
-    // mantemos apenas os exercícios já aceites até esse passo.
-    const prev = step - 1;
-    setBuilt((b) => b.slice(0, prev));
-    setStep(prev);
+    const newStep = step - 1;
+    setBuilt((b) => b.slice(0, Math.max(0, newStep - 1)));
+    setStep(newStep);
   }
+
+  const isPick = step === 0;
+  const isAssign = step === picked.length + 1;
+  const current = !isPick && !isAssign ? picked[step - 1] : null;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -90,7 +105,7 @@ export default function CriarTrabalhoPage() {
             Criar trabalho
           </h1>
           <p className="text-slate-500">
-            Gera os 3 exercícios e atribui a um aluno.
+            Escolhe os exercícios, gera e atribui aos alunos.
           </p>
         </div>
         <Button variant="ghost" size="sm" icon={<ArrowLeft size={16} />} onClick={back}>
@@ -98,28 +113,39 @@ export default function CriarTrabalhoPage() {
         </Button>
       </header>
 
-      {/* Stepper */}
-      <div className="mb-6 flex gap-2">
-        {STEPS.map((s, i) => {
-          const Icon = s.icon;
-          const state = i < step ? "done" : i === step ? "active" : "todo";
-          return (
-            <div
-              key={s.type}
-              className={`flex flex-1 flex-col items-center gap-1 rounded-2xl border-2 p-2 ${
-                state === "done"
-                  ? "border-success/40 bg-success/5 text-success-dark"
-                  : state === "active"
-                    ? "border-primary bg-primary/5 text-primary-dark"
-                    : "border-slate-200 text-slate-400"
-              }`}
-            >
-              <Icon size={20} />
-              <span className="text-xs font-bold">{s.label}</span>
-            </div>
-          );
-        })}
-      </div>
+      {/* Stepper (depois de escolher) */}
+      {picked.length > 0 && (
+        <div className="mb-6 flex flex-wrap gap-2">
+          {picked.map((t, i) => {
+            const state = i + 1 < step ? "done" : i + 1 === step ? "active" : "todo";
+            return (
+              <span
+                key={`${t}-${i}`}
+                className={cn(
+                  "rounded-full border-2 px-3 py-1 text-xs font-bold",
+                  state === "done"
+                    ? "border-success/40 bg-success/5 text-success-dark"
+                    : state === "active"
+                      ? "border-primary bg-primary/5 text-primary-dark"
+                      : "border-slate-200 text-slate-400"
+                )}
+              >
+                {i + 1}. {exerciseLabelShort(t)}
+              </span>
+            );
+          })}
+          <span
+            className={cn(
+              "rounded-full border-2 px-3 py-1 text-xs font-bold",
+              isAssign
+                ? "border-primary bg-primary/5 text-primary-dark"
+                : "border-slate-200 text-slate-400"
+            )}
+          >
+            Atribuir
+          </span>
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -129,13 +155,90 @@ export default function CriarTrabalhoPage() {
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.25 }}
         >
-          {step === 0 && <DitadoConfig onAccept={accept} />}
-          {step === 1 && <CompreensaoConfig onAccept={accept} />}
-          {step === 2 && <MatematicaConfig onAccept={accept} />}
-          {step === 3 && <AssignStep exercises={built} />}
+          {isPick && (
+            <PickStep
+              picked={picked}
+              setPicked={setPicked}
+              onContinue={() => setStep(1)}
+            />
+          )}
+          {current === "ditado" && <DitadoConfig onAccept={accept} />}
+          {current === "compreensao" && <CompreensaoConfig onAccept={accept} />}
+          {current === "matematica" && <MatematicaConfig onAccept={accept} />}
+          {(current === "traducao-en-pt" || current === "traducao-pt-en") && (
+            <TraducaoConfig kind={current} onAccept={accept} />
+          )}
+          {current === "interpretacao-en" && (
+            <InterpretacaoConfig onAccept={accept} />
+          )}
+          {isAssign && <AssignStep exercises={built} />}
         </motion.div>
       </AnimatePresence>
     </div>
+  );
+}
+
+function PickStep({
+  picked,
+  setPicked,
+  onContinue,
+}: {
+  picked: StoredExerciseType[];
+  setPicked: (p: StoredExerciseType[]) => void;
+  onContinue: () => void;
+}) {
+  function toggle(t: StoredExerciseType) {
+    setPicked(picked.includes(t) ? picked.filter((x) => x !== t) : [...picked, t]);
+  }
+  return (
+    <Card className="space-y-5">
+      <div>
+        <CardTitle>Escolhe os exercícios</CardTitle>
+        <CardSubtitle>
+          Seleciona um ou mais. A ordem é a ordem por que os escolheres.
+        </CardSubtitle>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {ALL_TYPES.map(({ type, label, icon: Icon }) => {
+          const idx = picked.indexOf(type);
+          const on = idx >= 0;
+          return (
+            <button
+              key={type}
+              onClick={() => toggle(type)}
+              className={cn(
+                "flex items-center gap-3 rounded-2xl border-2 p-4 text-left transition",
+                on
+                  ? "border-primary bg-primary/5"
+                  : "border-slate-200 hover:border-slate-300"
+              )}
+            >
+              <Icon
+                size={22}
+                className={on ? "text-primary-dark" : "text-slate-400"}
+              />
+              <span className="flex-1 font-display font-bold text-ink">
+                {label}
+              </span>
+              {on && (
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary font-display text-sm font-extrabold text-white">
+                  {idx + 1}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <Button
+        size="lg"
+        fullWidth
+        icon={<ArrowRight size={20} />}
+        disabled={picked.length === 0}
+        onClick={onContinue}
+      >
+        Continuar ({picked.length})
+      </Button>
+    </Card>
   );
 }
 
@@ -431,28 +534,251 @@ function MatematicaConfig({ onAccept }: { onAccept: (e: StoredExercise) => void 
   );
 }
 
+function DifficultyField({
+  value,
+  onChange,
+}: {
+  value: Difficulty;
+  onChange: (d: Difficulty) => void;
+}) {
+  return (
+    <Field label="Dificuldade">
+      <SegmentedControl
+        value={value}
+        onChange={onChange}
+        options={(["facil", "medio", "dificil"] as Difficulty[]).map((d) => ({
+          value: d,
+          label: difficultyLabel(d),
+        }))}
+      />
+    </Field>
+  );
+}
+
+function TraducaoConfig({
+  kind,
+  onAccept,
+}: {
+  kind: "traducao-en-pt" | "traducao-pt-en";
+  onAccept: (e: StoredExercise) => void;
+}) {
+  const { toast } = useToast();
+  const enToPt = kind === "traducao-en-pt";
+  const [prompt, setPrompt] = useState("");
+  const [gradeLevel, setGradeLevel] = useState(5);
+  const [difficulty, setDifficulty] = useState<Difficulty>("medio");
+  const [gen, setGen] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function generate() {
+    setBusy(true);
+    try {
+      const r = await gerarTraducao({ kind, gradeLevel, difficulty, prompt });
+      setGen(r.text);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Erro ao gerar.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (gen) {
+    return (
+      <Card className="space-y-5">
+        <div className="flex items-center justify-between">
+          <CardTitle>Texto a traduzir</CardTitle>
+          <Badge tone="secondary">{enToPt ? "EN → PT" : "PT → EN"}</Badge>
+        </div>
+        <p className="whitespace-pre-line rounded-2xl bg-slate-50 p-5 leading-relaxed text-ink">
+          {gen}
+        </p>
+        <div className="flex gap-3">
+          <Button variant="outline" icon={<RefreshCw size={18} />} loading={busy} onClick={generate}>
+            Regenerar
+          </Button>
+          <Button
+            className="flex-1"
+            icon={<CheckCircle2 size={18} />}
+            onClick={() => onAccept({ type: kind, gradeLevel, sourceText: gen })}
+          >
+            Aceitar e continuar
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="space-y-5">
+      <CardSubtitle>
+        {enToPt ? "Tradução Inglês → Português" : "Tradução Português → Inglês"}
+      </CardSubtitle>
+      <Field label="Tema (opcional)">
+        <TextArea
+          value={prompt}
+          onChange={setPrompt}
+          placeholder={
+            enToPt ? "ex.: a short story about animals" : "ex.: um texto sobre a escola"
+          }
+        />
+      </Field>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Ano escolar">
+          <GradeSelect value={gradeLevel} onChange={setGradeLevel} />
+        </Field>
+        <DifficultyField value={difficulty} onChange={setDifficulty} />
+      </div>
+      <Button size="lg" fullWidth loading={busy} icon={<Sparkles size={20} />} onClick={generate}>
+        Gerar texto
+      </Button>
+    </Card>
+  );
+}
+
+function InterpretacaoConfig({
+  onAccept,
+}: {
+  onAccept: (e: StoredExercise) => void;
+}) {
+  const { toast } = useToast();
+  const [prompt, setPrompt] = useState("");
+  const [gradeLevel, setGradeLevel] = useState(5);
+  const [difficulty, setDifficulty] = useState<Difficulty>("medio");
+  const [count, setCount] = useState(4);
+  const [gen, setGen] = useState<{ text: string; questions: McQuestion[] } | null>(
+    null
+  );
+  const [busy, setBusy] = useState(false);
+
+  async function generate() {
+    setBusy(true);
+    try {
+      const r = await gerarInterpretacao({ gradeLevel, difficulty, count, prompt });
+      setGen(r);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Erro ao gerar.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (gen) {
+    return (
+      <Card className="space-y-4">
+        <CardTitle>Pré-visualização</CardTitle>
+        <p className="whitespace-pre-line rounded-2xl bg-slate-50 p-4 text-sm leading-relaxed text-ink">
+          {gen.text}
+        </p>
+        <div className="space-y-2">
+          {gen.questions.map((q, i) => (
+            <div key={i} className="rounded-xl bg-slate-50 p-3 text-sm">
+              <p className="font-display font-bold text-ink">
+                {i + 1}. {q.question}
+              </p>
+              <p className="mt-1 text-success-dark">
+                Certa: {q.options[q.correctIndex]}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" icon={<RefreshCw size={18} />} loading={busy} onClick={generate}>
+            Regenerar
+          </Button>
+          <Button
+            className="flex-1"
+            icon={<CheckCircle2 size={18} />}
+            onClick={() =>
+              onAccept({
+                type: "interpretacao-en",
+                gradeLevel,
+                text: gen.text,
+                questions: gen.questions,
+              })
+            }
+          >
+            Aceitar e continuar
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="space-y-5">
+      <CardSubtitle>Interpretação de Inglês (escolha múltipla)</CardSubtitle>
+      <Field label="Tema (opcional)">
+        <TextArea
+          value={prompt}
+          onChange={setPrompt}
+          placeholder="ex.: a text about sports"
+        />
+      </Field>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Ano escolar">
+          <GradeSelect value={gradeLevel} onChange={setGradeLevel} />
+        </Field>
+        <DifficultyField value={difficulty} onChange={setDifficulty} />
+      </div>
+      <Field label="Número de perguntas">
+        <SegmentedControl
+          value={count}
+          onChange={setCount}
+          options={[3, 4, 5, 6].map((n) => ({ value: n, label: String(n) }))}
+        />
+      </Field>
+      <Button size="lg" fullWidth loading={busy} icon={<Sparkles size={20} />} onClick={generate}>
+        Gerar
+      </Button>
+    </Card>
+  );
+}
+
 function AssignStep({ exercises }: { exercises: StoredExercise[] }) {
   const router = useRouter();
   const { toast } = useToast();
   const [students, setStudents] = useState<StudentSummary[]>([]);
-  const [studentId, setStudentId] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [title, setTitle] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    listStudents().then((r) => {
-      setStudents(r.students);
-      if (r.students[0]) setStudentId(r.students[0].id);
-    });
+    listStudents().then((r) => setStudents(r.students));
   }, []);
 
+  const years = Array.from(
+    new Set(students.map((s) => s.gradeLevel).filter(Boolean) as number[])
+  ).sort((a, b) => a - b);
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+  function selectYear(year: number) {
+    setSelected(
+      new Set(students.filter((s) => s.gradeLevel === year).map((s) => s.id))
+    );
+  }
+  function selectAll() {
+    setSelected(new Set(students.map((s) => s.id)));
+  }
+
   async function save() {
-    if (!studentId) return toast("Escolhe um aluno.", "warning");
-    if (exercises.length !== 3) return toast("Faltam exercícios.", "warning");
+    const studentIds = Array.from(selected);
+    if (studentIds.length === 0) return toast("Escolhe pelo menos um aluno.", "warning");
     setBusy(true);
     try {
-      await createAssignment({ studentId, title: title.trim() || undefined, exercises });
-      toast("Trabalho atribuído!", "success");
+      const { count } = await createAssignment({
+        studentIds,
+        title: title.trim() || undefined,
+        exercises,
+        dueDate: dueDate ? `${dueDate}T23:59:59` : null,
+      });
+      toast(`Trabalho atribuído a ${count} aluno${count > 1 ? "s" : ""}!`, "success");
       router.replace("/");
     } catch (e) {
       toast(e instanceof Error ? e.message : "Erro ao guardar.", "error");
@@ -464,8 +790,10 @@ function AssignStep({ exercises }: { exercises: StoredExercise[] }) {
   return (
     <Card className="space-y-5">
       <div>
-        <CardTitle>Atribuir a um aluno</CardTitle>
-        <CardSubtitle>Os 3 exercícios ficam prontos para o aluno resolver em sequência.</CardSubtitle>
+        <CardTitle>Atribuir o trabalho</CardTitle>
+        <CardSubtitle>
+          Podes atribuir a vários alunos ao mesmo tempo (ex.: todos de um ano).
+        </CardSubtitle>
       </div>
 
       <Field label="Título (opcional)">
@@ -477,29 +805,88 @@ function AssignStep({ exercises }: { exercises: StoredExercise[] }) {
         />
       </Field>
 
-      <Field label="Aluno">
+      <Field label="Prazo (opcional)">
+        <input
+          type="date"
+          className="rounded-2xl border-2 border-slate-200 bg-white px-4 py-3 text-ink focus:border-primary focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+        />
+        <span className="mt-1 block text-sm text-slate-400">
+          Sem prazo, o trabalho fica sempre disponível.
+        </span>
+      </Field>
+
+      <Field label="Alunos">
         {students.length === 0 ? (
           <p className="rounded-2xl bg-warning/10 p-3 text-sm font-semibold text-amber-700">
             Ainda não tens alunos. Cria um aluno no painel antes de atribuir.
           </p>
         ) : (
-          <select
-            value={studentId}
-            onChange={(e) => setStudentId(e.target.value)}
-            className="w-full rounded-2xl border-2 border-slate-200 bg-white px-4 py-3 font-display font-bold text-ink focus:border-primary focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
-          >
-            {students.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.displayName} ({s.username})
-              </option>
-            ))}
-          </select>
+          <>
+            <div className="mb-3 flex flex-wrap gap-2">
+              <button
+                onClick={selectAll}
+                className="rounded-full border-2 border-slate-200 px-3 py-1 text-sm font-semibold text-slate-500 hover:border-primary hover:text-primary-dark"
+              >
+                Todos
+              </button>
+              {years.map((y) => (
+                <button
+                  key={y}
+                  onClick={() => selectYear(y)}
+                  className="rounded-full border-2 border-slate-200 px-3 py-1 text-sm font-semibold text-slate-500 hover:border-secondary hover:text-secondary-dark"
+                >
+                  {y}.º ano
+                </button>
+              ))}
+              <button
+                onClick={() => setSelected(new Set())}
+                className="rounded-full px-3 py-1 text-sm font-semibold text-slate-400 hover:text-danger"
+              >
+                Limpar
+              </button>
+            </div>
+            <div className="max-h-64 space-y-2 overflow-y-auto">
+              {students.map((s) => {
+                const on = selected.has(s.id);
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => toggle(s.id)}
+                    className={`flex w-full items-center justify-between rounded-2xl border-2 px-4 py-3 text-left transition ${
+                      on
+                        ? "border-primary bg-primary/5"
+                        : "border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <span>
+                      <span className="font-display font-bold text-ink">
+                        {s.displayName}
+                      </span>{" "}
+                      <span className="text-sm text-slate-400">({s.username})</span>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      {s.gradeLevel ? (
+                        <Badge tone="neutral">{s.gradeLevel}.º</Badge>
+                      ) : null}
+                      <span
+                        className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${
+                          on
+                            ? "border-primary bg-primary text-white"
+                            : "border-slate-300"
+                        }`}
+                      >
+                        {on ? <CheckCircle2 size={14} /> : null}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
       </Field>
-
-      <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
-        Inclui: Ditado · Compreensão · Matemática
-      </div>
 
       <Button
         size="lg"
@@ -507,9 +894,9 @@ function AssignStep({ exercises }: { exercises: StoredExercise[] }) {
         loading={busy}
         icon={<Send size={20} />}
         onClick={save}
-        disabled={students.length === 0}
+        disabled={students.length === 0 || selected.size === 0}
       >
-        Atribuir trabalho
+        Atribuir a {selected.size || "—"} aluno{selected.size === 1 ? "" : "s"}
       </Button>
     </Card>
   );

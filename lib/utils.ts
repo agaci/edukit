@@ -5,6 +5,39 @@ export function cn(...classes: Array<string | false | null | undefined>): string
   return classes.filter(Boolean).join(" ");
 }
 
+/** Formata uma data ISO em dd de mês de aaaa (pt-PT). */
+export function formatDate(iso?: string): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("pt-PT", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+/** Um trabalho está atrasado se tem prazo, não está concluído e o prazo passou. */
+export function isOverdue(a: { dueDate?: string; status: string }): boolean {
+  return (
+    !!a.dueDate &&
+    a.status !== "completed" &&
+    Date.now() > new Date(a.dueDate).getTime()
+  );
+}
+
+/** Foi entregue fora do prazo? (concluído depois do prazo) */
+export function wasLate(a: {
+  dueDate?: string;
+  status: string;
+  completedAt?: string;
+}): boolean {
+  return (
+    !!a.dueDate &&
+    a.status === "completed" &&
+    !!a.completedAt &&
+    new Date(a.completedAt).getTime() > new Date(a.dueDate).getTime()
+  );
+}
+
 /** Formata segundos em MM:SS. */
 export function formatTime(totalSeconds: number): string {
   const safe = Math.max(0, Math.floor(totalSeconds));
@@ -37,6 +70,32 @@ export function moduleName(id: ModuleId): string {
     compreensao: "Compreensão Escrita",
     matematica: "Matemática",
   }[id];
+}
+
+/** Rótulo de qualquer tipo de exercício (inclui os de Inglês). */
+export function exerciseLabel(type: string): string {
+  const map: Record<string, string> = {
+    ditado: "Ditado",
+    compreensao: "Compreensão Escrita",
+    matematica: "Matemática",
+    "traducao-en-pt": "Tradução Inglês→Português",
+    "traducao-pt-en": "Tradução Português→Inglês",
+    "interpretacao-en": "Interpretação (Inglês)",
+  };
+  return map[type] ?? type;
+}
+
+/** Rótulo curto (para cabeçalhos compactos). */
+export function exerciseLabelShort(type: string): string {
+  const map: Record<string, string> = {
+    ditado: "Ditado",
+    compreensao: "Compreensão",
+    matematica: "Matemática",
+    "traducao-en-pt": "Inglês→PT",
+    "traducao-pt-en": "PT→Inglês",
+    "interpretacao-en": "Interpretação EN",
+  };
+  return map[type] ?? type;
 }
 
 /**

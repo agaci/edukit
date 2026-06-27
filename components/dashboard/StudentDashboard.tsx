@@ -11,7 +11,10 @@ import {
   PencilLine,
   BookOpen,
   Calculator,
+  Languages,
+  BookOpenText,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -19,13 +22,16 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { listAssignments } from "@/lib/api";
-import { scoreColor } from "@/lib/utils";
+import { scoreColor, formatDate, isOverdue } from "@/lib/utils";
 import type { AssignmentDTO } from "@/types";
 
-const TYPE_ICON = {
+const TYPE_ICON: Record<string, LucideIcon> = {
   ditado: PencilLine,
   compreensao: BookOpen,
   matematica: Calculator,
+  "traducao-en-pt": Languages,
+  "traducao-pt-en": Languages,
+  "interpretacao-en": BookOpenText,
 };
 
 export function StudentDashboard() {
@@ -71,15 +77,26 @@ export function StudentDashboard() {
         <section className="space-y-4">
           {pending.map((a) => (
             <Card key={a.id} className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <CardTitle className="text-xl">
                   {a.title || "Trabalho"}
                 </CardTitle>
-                <Badge tone={a.status === "in_progress" ? "warning" : "primary"}>
-                  {a.status === "in_progress" ? "A meio" : "Novo"}
-                </Badge>
+                <div className="flex shrink-0 items-center gap-2">
+                  {isOverdue(a) && <Badge tone="danger">Atrasado</Badge>}
+                  <Badge tone={a.status === "in_progress" ? "warning" : "primary"}>
+                    {a.status === "in_progress" ? "A meio" : "Novo"}
+                  </Badge>
+                </div>
               </div>
-              <p className="text-sm text-slate-400">De {a.tutorName}</p>
+              <p className="text-sm text-slate-400">
+                De {a.tutorName}
+                {a.dueDate ? (
+                  <span className={isOverdue(a) ? "text-danger" : ""}>
+                    {" "}
+                    · prazo: {formatDate(a.dueDate)}
+                  </span>
+                ) : null}
+              </p>
               <div className="flex gap-2">
                 {a.items.map((it, i) => {
                   const Icon = TYPE_ICON[it.exercise.type];

@@ -5,6 +5,7 @@ export interface SubmitPayload {
   photoBase64?: string;
   mimeType?: string;
   timeSpent?: number;
+  answers?: number[]; // escolha múltipla (interpretação)
 }
 
 export interface SubmitResponse {

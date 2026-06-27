@@ -10,12 +10,15 @@ import {
   UserPlus,
   CheckCircle2,
   Clock,
+  ChevronRight,
+  BarChart3,
 } from "lucide-react";
-import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { GradeSelect } from "@/components/ui/GradeSelect";
 import { useToast } from "@/components/ui/Toast";
 import {
   listStudents,
@@ -23,7 +26,13 @@ import {
   suggestUsername,
   listAssignments,
 } from "@/lib/api";
-import { scoreColor, slugifyUsername } from "@/lib/utils";
+import {
+  scoreColor,
+  slugifyUsername,
+  gradeLabel,
+  formatDate,
+  isOverdue,
+} from "@/lib/utils";
 import type { AssignmentDTO, StudentSummary } from "@/types";
 
 const inputClass =
@@ -71,11 +80,18 @@ export function TutorDashboard() {
           <h1 className="font-display text-3xl font-extrabold text-ink">Painel do tutor</h1>
           <p className="text-slate-500">Gere os teus alunos e cria trabalhos.</p>
         </div>
-        <Link href="/tutor/criar">
-          <Button icon={<Plus size={18} />} disabled={students.length === 0}>
-            Criar trabalho
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/tutor/resultados">
+            <Button variant="outline" icon={<BarChart3 size={18} />}>
+              Resultados
+            </Button>
+          </Link>
+          <Link href="/tutor/criar">
+            <Button icon={<Plus size={18} />} disabled={students.length === 0}>
+              Criar trabalho
+            </Button>
+          </Link>
+        </div>
       </motion.div>
 
       {/* Alunos */}
@@ -108,7 +124,12 @@ export function TutorDashboard() {
                     utilizador: <b>{s.username}</b>
                   </p>
                 </div>
-                <Badge tone="neutral">{s.assignmentsCount} trab.</Badge>
+                <div className="flex flex-col items-end gap-1">
+                  {s.gradeLevel ? (
+                    <Badge tone="secondary">{gradeLabel(s.gradeLevel)}</Badge>
+                  ) : null}
+                  <Badge tone="neutral">{s.assignmentsCount} trab.</Badge>
+                </div>
               </Card>
             ))}
           </div>
@@ -130,29 +151,43 @@ export function TutorDashboard() {
           <div className="space-y-3">
             {assignments.map((a) => {
               const st = STATUS[a.status];
+              const done = a.items.filter((it) => typeof it.score === "number")
+                .length;
               return (
-                <Card key={a.id} className="flex items-center justify-between">
-                  <div>
-                    <p className="font-display font-bold text-ink">
-                      {a.title || "Trabalho"}
-                    </p>
-                    <p className="text-sm text-slate-400">
-                      {a.studentName} · {new Date(a.createdAt).toLocaleDateString("pt-PT")}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge tone={st.tone}>{st.label}</Badge>
-                    {a.finalScore !== undefined && (
-                      <span
-                        className={`font-display text-2xl font-extrabold ${
-                          scoreColor(a.finalScore).text
-                        }`}
-                      >
-                        {a.finalScore.toFixed(1)}
-                      </span>
-                    )}
-                  </div>
-                </Card>
+                <Link key={a.id} href={`/tutor/trabalho/${a.id}`}>
+                  <Card className="flex items-center justify-between transition hover:shadow-soft-lg">
+                    <div>
+                      <p className="font-display font-bold text-ink">
+                        {a.title || "Trabalho"}
+                      </p>
+                      <p className="text-sm text-slate-400">
+                        {a.studentName} ·{" "}
+                        {new Date(a.createdAt).toLocaleDateString("pt-PT")} ·{" "}
+                        {done}/{a.items.length} exercícios
+                        {a.dueDate ? (
+                          <span className={isOverdue(a) ? "text-danger" : ""}>
+                            {" "}
+                            · prazo {formatDate(a.dueDate)}
+                          </span>
+                        ) : null}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {isOverdue(a) && <Badge tone="danger">Atrasado</Badge>}
+                      <Badge tone={st.tone}>{st.label}</Badge>
+                      {a.finalScore !== undefined && (
+                        <span
+                          className={`font-display text-2xl font-extrabold ${
+                            scoreColor(a.finalScore).text
+                          }`}
+                        >
+                          {a.finalScore.toFixed(1)}
+                        </span>
+                      )}
+                      <ChevronRight size={20} className="text-slate-300" />
+                    </div>
+                  </Card>
+                </Link>
               );
             })}
           </div>
@@ -188,6 +223,7 @@ function AddStudentModal({
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [pin, setPin] = useState("");
+  const [gradeLevel, setGradeLevel] = useState(1);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -195,6 +231,7 @@ function AddStudentModal({
       setName("");
       setUsername("");
       setPin("");
+      setGradeLevel(1);
     }
   }, [open]);
 
@@ -224,6 +261,7 @@ function AddStudentModal({
         displayName: name.trim(),
         username: slugifyUsername(username || name),
         pin,
+        gradeLevel,
       });
       onCreated(student);
     } catch (err) {
@@ -265,6 +303,13 @@ function AddStudentModal({
           <span className="mt-1 block text-sm text-slate-400">
             É com este utilizador + PIN que o aluno entra.
           </span>
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block font-display font-bold text-ink">
+            Ano escolar
+          </span>
+          <GradeSelect value={gradeLevel} onChange={setGradeLevel} />
         </label>
 
         <label className="block">

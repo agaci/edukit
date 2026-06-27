@@ -4,6 +4,7 @@ import type {
   ExerciseResult,
   GeneratedText,
   MathResult,
+  McQuestion,
 } from "@/types";
 
 // ============================================================================
@@ -40,6 +41,27 @@ export function gerarExercicios(input: {
   difficulty: Difficulty;
 }): Promise<{ exercises: Exercise[] }> {
   return postJson<{ exercises: Exercise[] }>("/api/gerar-exercicio", input);
+}
+
+export function gerarTraducao(input: {
+  kind: "traducao-en-pt" | "traducao-pt-en";
+  gradeLevel: number;
+  difficulty: Difficulty;
+  prompt?: string;
+}): Promise<{ text: string }> {
+  return postJson<{ text: string }>("/api/gerar-ingles", input);
+}
+
+export function gerarInterpretacao(input: {
+  gradeLevel: number;
+  difficulty: Difficulty;
+  count: number;
+  prompt?: string;
+}): Promise<{ text: string; questions: McQuestion[] }> {
+  return postJson<{ text: string; questions: McQuestion[] }>("/api/gerar-ingles", {
+    kind: "interpretacao-en",
+    ...input,
+  });
 }
 
 export function corrigirDitado(input: {
