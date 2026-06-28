@@ -15,6 +15,8 @@ import {
   Calculator,
   Languages,
   BookOpenText,
+  SlidersHorizontal,
+  Wand2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
@@ -58,13 +60,56 @@ const ALL_TYPES: { type: StoredExerciseType; label: string; icon: LucideIcon }[]
   { type: "interpretacao-en", label: "Interpretação (Inglês)", icon: BookOpenText },
 ];
 
+// Gera um exercício automaticamente (sem prompt), com configuração por omissão.
+async function gerarAutomatico(
+  type: StoredExerciseType,
+  gradeLevel: number,
+  difficulty: Difficulty
+): Promise<StoredExercise> {
+  if (type === "ditado") {
+    const t = await gerarTexto({ prompt: "", gradeLevel, difficulty, type: "ditado" });
+    return {
+      type: "ditado",
+      gradeLevel,
+      text: t.text,
+      wordCount: t.wordCount,
+      maxPlays: 3,
+      inputMode: "both",
+    };
+  }
+  if (type === "compreensao") {
+    const t = await gerarTexto({ prompt: "", gradeLevel, difficulty, type: "compreensao" });
+    return {
+      type: "compreensao",
+      gradeLevel,
+      text: t.text,
+      theme: t.theme,
+      readMinutes: 4,
+      writeMinutes: 10,
+    };
+  }
+  if (type === "matematica") {
+    const r = await gerarExercicios({
+      prompt: "",
+      gradeLevel,
+      exerciseTypes: [],
+      count: 5,
+      difficulty,
+    });
+    return { type: "matematica", gradeLevel, exercises: r.exercises };
+  }
+  if (type === "traducao-en-pt" || type === "traducao-pt-en") {
+    const r = await gerarTraducao({ kind: type, gradeLevel, difficulty });
+    return { type, gradeLevel, sourceText: r.text };
+  }
+  const r = await gerarInterpretacao({ gradeLevel, difficulty, count: 4 });
+  return { type: "interpretacao-en", gradeLevel, text: r.text, questions: r.questions };
+}
+
 export default function CriarTrabalhoPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-
-  const [picked, setPicked] = useState<StoredExerciseType[]>([]);
-  const [step, setStep] = useState(0); // 0 = escolher; 1..N = config; N+1 = atribuir
-  const [built, setBuilt] = useState<StoredExercise[]>([]);
+  const [mode, setMode] = useState<"auto" | "custom" | null>(null);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== "tutor")) router.replace("/");
@@ -78,6 +123,232 @@ export default function CriarTrabalhoPage() {
     );
   }
 
+  if (!mode) {
+    return <ModeChooser onPick={setMode} onExit={() => router.replace("/")} />;
+  }
+  if (mode === "auto") {
+    return <AutoCreate onBack={() => setMode(null)} />;
+  }
+  return <CustomWizard onBack={() => setMode(null)} />;
+}
+
+function ModeChooser({
+  onPick,
+  onExit,
+}: {
+  onPick: (m: "auto" | "custom") => void;
+  onExit: () => void;
+}) {
+  return (
+    <div className="mx-auto max-w-2xl">
+      <header className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold text-ink">
+            Criar trabalho
+          </h1>
+          <p className="text-slate-500">Como queres criar o teste?</p>
+        </div>
+        <Button variant="ghost" size="sm" icon={<ArrowLeft size={16} />} onClick={onExit}>
+          Sair
+        </Button>
+      </header>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <button
+          onClick={() => onPick("auto")}
+          className="flex flex-col items-start gap-2 rounded-3xl border-2 border-primary/40 bg-primary/5 p-6 text-left transition hover:border-primary focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30"
+        >
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 text-primary-dark">
+            <Wand2 size={24} />
+          </span>
+          <span className="font-display text-lg font-extrabold text-ink">
+            Automático
+          </span>
+          <span className="text-sm text-slate-500">
+            Indica o ano, as disciplinas e a dificuldade — o EduKit gera o teste
+            completo sozinho.
+          </span>
+        </button>
+        <button
+          onClick={() => onPick("custom")}
+          className="flex flex-col items-start gap-2 rounded-3xl border-2 border-slate-200 bg-white p-6 text-left transition hover:border-secondary focus:outline-none focus-visible:ring-4 focus-visible:ring-secondary/30"
+        >
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary/15 text-secondary-dark">
+            <SlidersHorizontal size={24} />
+          </span>
+          <span className="font-display text-lg font-extrabold text-ink">
+            Personalizado
+          </span>
+          <span className="text-sm text-slate-500">
+            Escolhe e configura cada exercício, com tema e pré-visualização.
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AutoCreate({ onBack }: { onBack: () => void }) {
+  const { toast } = useToast();
+  const [gradeLevel, setGradeLevel] = useState(3);
+  const [difficulty, setDifficulty] = useState<Difficulty>("medio");
+  const [subjects, setSubjects] = useState<StoredExerciseType[]>([
+    "ditado",
+    "compreensao",
+    "matematica",
+  ]);
+  const [built, setBuilt] = useState<StoredExercise[] | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  function toggle(t: StoredExerciseType) {
+    setSubjects((p) => (p.includes(t) ? p.filter((x) => x !== t) : [...p, t]));
+  }
+
+  async function gerar() {
+    if (subjects.length === 0) {
+      toast("Escolhe pelo menos uma disciplina.", "warning");
+      return;
+    }
+    setBusy(true);
+    setBuilt(null);
+    try {
+      const ordered = ALL_TYPES.map((a) => a.type).filter((t) =>
+        subjects.includes(t)
+      );
+      const out: StoredExercise[] = [];
+      for (const t of ordered) {
+        setProgress(exerciseLabelShort(t));
+        // eslint-disable-next-line no-await-in-loop
+        out.push(await gerarAutomatico(t, gradeLevel, difficulty));
+      }
+      setBuilt(out);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Erro ao gerar.", "error");
+    } finally {
+      setProgress(null);
+      setBusy(false);
+    }
+  }
+
+  if (built) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <header className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="font-display text-3xl font-extrabold text-ink">
+              Teste gerado
+            </h1>
+            <p className="text-slate-500">Confirma e atribui.</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<ArrowLeft size={16} />}
+            onClick={() => setBuilt(null)}
+          >
+            Alterar
+          </Button>
+        </header>
+
+        <Card className="mb-5 space-y-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl">Exercícios</CardTitle>
+            <Badge tone="primary">{built.length}</Badge>
+          </div>
+          <ul className="space-y-1 text-sm text-slate-500">
+            {built.map((ex, i) => (
+              <li key={i}>
+                {i + 1}. {exerciseLabelShort(ex.type)}
+              </li>
+            ))}
+          </ul>
+        </Card>
+
+        <AssignStep
+          exercises={built}
+          initialTitle={`Teste ${gradeLevel}.º ano (${difficultyLabel(difficulty)})`}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      <header className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold text-ink">
+            Teste automático
+          </h1>
+          <p className="text-slate-500">
+            Indica o ano, as disciplinas e a dificuldade.
+          </p>
+        </div>
+        <Button variant="ghost" size="sm" icon={<ArrowLeft size={16} />} onClick={onBack}>
+          Voltar
+        </Button>
+      </header>
+
+      <Card className="space-y-5">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="Ano escolar">
+            <GradeSelect value={gradeLevel} onChange={setGradeLevel} />
+          </Field>
+          <DifficultyField value={difficulty} onChange={setDifficulty} />
+        </div>
+
+        <Field label="Disciplinas">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {ALL_TYPES.map(({ type, label, icon: Icon }) => {
+              const on = subjects.includes(type);
+              return (
+                <button
+                  key={type}
+                  onClick={() => toggle(type)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-2xl border-2 p-3 text-left transition",
+                    on
+                      ? "border-primary bg-primary/5"
+                      : "border-slate-200 hover:border-slate-300"
+                  )}
+                >
+                  <Icon
+                    size={20}
+                    className={on ? "text-primary-dark" : "text-slate-400"}
+                  />
+                  <span className="flex-1 font-display text-sm font-bold text-ink">
+                    {label}
+                  </span>
+                  {on && <CheckCircle2 size={18} className="text-primary" />}
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+
+        <Button
+          size="lg"
+          fullWidth
+          loading={busy}
+          icon={<Wand2 size={20} />}
+          onClick={gerar}
+        >
+          Gerar teste automático
+        </Button>
+        {progress && (
+          <p className="text-center text-sm font-semibold text-slate-500">
+            A gerar: {progress}…
+          </p>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function CustomWizard({ onBack }: { onBack: () => void }) {
+  const [picked, setPicked] = useState<StoredExerciseType[]>([]);
+  const [step, setStep] = useState(0); // 0 = escolher; 1..N = config; N+1 = atribuir
+  const [built, setBuilt] = useState<StoredExercise[]>([]);
+
   function accept(ex: StoredExercise) {
     setBuilt((b) => [...b, ex]);
     setStep((s) => s + 1);
@@ -85,7 +356,7 @@ export default function CriarTrabalhoPage() {
 
   function back() {
     if (step === 0) {
-      router.replace("/");
+      onBack();
       return;
     }
     const newStep = step - 1;
@@ -109,7 +380,7 @@ export default function CriarTrabalhoPage() {
           </p>
         </div>
         <Button variant="ghost" size="sm" icon={<ArrowLeft size={16} />} onClick={back}>
-          {step === 0 ? "Sair" : "Anterior"}
+          {step === 0 ? "Voltar" : "Anterior"}
         </Button>
       </header>
 
@@ -734,12 +1005,18 @@ function InterpretacaoConfig({
   );
 }
 
-function AssignStep({ exercises }: { exercises: StoredExercise[] }) {
+function AssignStep({
+  exercises,
+  initialTitle = "",
+}: {
+  exercises: StoredExercise[];
+  initialTitle?: string;
+}) {
   const router = useRouter();
   const { toast } = useToast();
   const [students, setStudents] = useState<StudentSummary[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(initialTitle);
   const [dueDate, setDueDate] = useState("");
   const [busy, setBusy] = useState(false);
 

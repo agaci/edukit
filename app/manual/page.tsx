@@ -22,6 +22,8 @@ import {
   RotateCcw,
   Copy,
   BarChart3,
+  Wand2,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Logo } from "@/components/layout/Logo";
 import { Card } from "@/components/ui/Card";
@@ -223,22 +225,33 @@ export default function ManualPage() {
         />
 
         <h3 className="mt-2 font-display font-extrabold text-ink">
-          2. Montar um teste (à la carte)
+          2. Montar um teste
         </h3>
-        <Steps
-          items={[
-            <>
-              Em <em>Criar trabalho</em>, no primeiro passo{" "}
-              <strong>escolhes os exercícios</strong> que queres incluir (um ou
-              mais dos seis tipos). A ordem é a ordem por que os escolheres.
-            </>,
-            <>
-              Configuras cada exercício (tema, ano, dificuldade…) e o EduKit{" "}
-              <strong>gera o conteúdo</strong> — podes pré-ver e{" "}
-              <em>regenerar</em> ou <em>aceitar</em>.
-            </>,
-          ]}
-        />
+        <p className="text-sm">
+          Em <em>Criar trabalho</em> escolhes um de dois modos:
+        </p>
+        <ul className="space-y-2 text-sm">
+          <li className="flex items-start gap-2">
+            <Wand2 size={16} className="mt-0.5 shrink-0 text-primary-dark" />
+            <span>
+              <strong>Automático</strong> — indicas só o <strong>ano</strong>, as{" "}
+              <strong>disciplinas</strong> (quais dos seis tipos) e a{" "}
+              <strong>dificuldade</strong>; o EduKit gera o teste completo sozinho,
+              sem prompts nem pré-visualização. Ideal para criar testes depressa.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <SlidersHorizontal
+              size={16}
+              className="mt-0.5 shrink-0 text-secondary-dark"
+            />
+            <span>
+              <strong>Personalizado</strong> — escolhes os exercícios e a ordem, e
+              configuras cada um (tema, tempos…) com pré-visualização e opção de{" "}
+              <em>regenerar</em> antes de aceitar.
+            </span>
+          </li>
+        </ul>
 
         <h3 className="mt-2 font-display font-extrabold text-ink">
           3. Atribuir (a um aluno ou a um grupo)
