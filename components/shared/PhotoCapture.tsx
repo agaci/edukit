@@ -121,11 +121,11 @@ export function PhotoCapture({ onCapture, onClear, hint }: PhotoCaptureProps) {
           <span className="font-display font-bold">Carregar foto</span>
         </button>
       </div>
+      {/* Sem `capture`: abre o explorador de ficheiros/galeria, não a câmara. */}
       <input
         ref={fileRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="hidden"
         onChange={handleFile}
       />
