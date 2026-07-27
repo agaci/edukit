@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Camera, Upload, RotateCcw, Check } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Camera, Upload, RotateCcw, Check, X } from "lucide-react";
 import { useCamera, type CapturedImage } from "@/hooks/useCamera";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
@@ -69,27 +70,44 @@ export function PhotoCapture({ onCapture, onClear, hint }: PhotoCaptureProps) {
     );
   }
 
-  // Estado 2: câmara activa.
+  // Estado 2: câmara activa — ecrã inteiro.
   if (streaming) {
-    return (
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-full max-w-md overflow-hidden rounded-3xl border-2 border-secondary/40 bg-black">
-          <video ref={videoRef} playsInline className="w-full" />
-        </div>
-        <div className="flex gap-3">
-          <Button
-            variant="primary"
-            size="lg"
-            icon={<Camera size={20} />}
-            onClick={handleCapture}
+    return createPortal(
+      <div className="fixed inset-0 z-[70] flex flex-col bg-black">
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          playsInline
+          className="h-full w-full flex-1 object-cover"
+        />
+        {/* Fechar (canto superior) */}
+        <button
+          onClick={stopCamera}
+          aria-label="Fechar câmara"
+          className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur transition hover:bg-black/70"
+        >
+          <X size={22} />
+        </button>
+        {/* Controlos inferiores */}
+        <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-10 bg-gradient-to-t from-black/70 to-transparent px-6 pb-10 pt-16">
+          <button
+            onClick={stopCamera}
+            className="font-display font-bold text-white/80 transition hover:text-white"
           >
-            Tirar foto
-          </Button>
-          <Button variant="ghost" onClick={stopCamera}>
             Cancelar
-          </Button>
+          </button>
+          <button
+            onClick={handleCapture}
+            aria-label="Tirar foto"
+            className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-white/25 backdrop-blur transition active:scale-95"
+          >
+            <Camera size={32} className="text-white" />
+          </button>
+          <span className="w-16" aria-hidden="true" />
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 

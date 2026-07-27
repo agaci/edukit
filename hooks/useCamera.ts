@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ============================================================================
 // Hook para captura por câmara (getUserMedia) e conversão para base64.
@@ -51,10 +51,8 @@ export function useCamera(): UseCamera {
         audio: false,
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
+      // O <video> só é montado quando `streaming` fica true; a ligação da
+      // stream ao elemento é feita no useEffect abaixo (senão o vídeo fica preto).
       setStreaming(true);
     } catch (err) {
       const message =
@@ -63,6 +61,14 @@ export function useCamera(): UseCamera {
       setStreaming(false);
     }
   }, []);
+
+  // Liga a stream ao elemento de vídeo assim que este existir no DOM.
+  useEffect(() => {
+    if (streaming && streamRef.current && videoRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => undefined);
+    }
+  }, [streaming]);
 
   const capturePhoto = useCallback((): CapturedImage | null => {
     const video = videoRef.current;
