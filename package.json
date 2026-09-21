@@ -4,10 +4,14 @@
   "private": true,
   "description": "EduKit — aplicação educacional para o 1.º ciclo (Ditado, Compreensão, Matemática) com correção por IA.",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "node scripts/next-cased.mjs dev",
+    "build": "node scripts/next-cased.mjs build",
+    "start": "node scripts/next-cased.mjs start",
+    "lint": "next lint",
+    "seed-admin": "node scripts/seed-admin.mjs",
+    "users": "node scripts/users.mjs",
+    "usage": "node scripts/usage.mjs",
+    "settings": "node scripts/settings.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.106.0",
