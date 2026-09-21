@@ -70,7 +70,7 @@ export function TutorDashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
+    <div className="mx-auto max-w-5xl space-y-8">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -115,7 +115,7 @@ export function TutorDashboard() {
             Ainda não tens alunos. Adiciona o primeiro para começar.
           </Card>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {students.map((s) => (
               <Card key={s.id} className="flex items-center justify-between">
                 <div>
@@ -148,49 +148,88 @@ export function TutorDashboard() {
             um aluno.
           </Card>
         ) : (
-          <div className="space-y-3">
-            {assignments.map((a) => {
-              const st = STATUS[a.status];
-              const done = a.items.filter((it) => typeof it.score === "number")
-                .length;
-              return (
-                <Link key={a.id} href={`/tutor/trabalho/${a.id}`}>
-                  <Card className="flex items-center justify-between transition hover:shadow-soft-lg">
-                    <div>
-                      <p className="font-display font-bold text-ink">
-                        {a.title || "Trabalho"}
-                      </p>
-                      <p className="text-sm text-slate-400">
-                        {a.studentName} ·{" "}
-                        {new Date(a.createdAt).toLocaleDateString("pt-PT")} ·{" "}
-                        {done}/{a.items.length} exercícios
-                        {a.dueDate ? (
-                          <span className={isOverdue(a) ? "text-danger" : ""}>
-                            {" "}
-                            · prazo {formatDate(a.dueDate)}
-                          </span>
-                        ) : null}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {isOverdue(a) && <Badge tone="danger">Atrasado</Badge>}
-                      <Badge tone={st.tone}>{st.label}</Badge>
-                      {a.finalScore !== undefined && (
-                        <span
-                          className={`font-display text-2xl font-extrabold ${
-                            scoreColor(a.finalScore).text
-                          }`}
-                        >
-                          {a.finalScore.toFixed(1)}
-                        </span>
-                      )}
-                      <ChevronRight size={20} className="text-slate-300" />
-                    </div>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
+          <Card padded={false}>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[620px] text-left">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50/60 text-sm text-slate-500">
+                    <th className="px-6 py-3 font-bold">Trabalho</th>
+                    <th className="px-3 py-3 font-bold">Aluno</th>
+                    <th className="px-3 py-3 text-right font-bold">Exercícios</th>
+                    <th className="px-3 py-3 font-bold">Estado</th>
+                    <th className="px-3 py-3 text-right font-bold">Nota</th>
+                    <th className="px-6 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {assignments.map((a) => {
+                    const st = STATUS[a.status];
+                    const done = a.items.filter(
+                      (it) => typeof it.score === "number"
+                    ).length;
+                    const late = isOverdue(a);
+                    return (
+                      <tr
+                        key={a.id}
+                        className="border-b border-slate-50 transition last:border-0 hover:bg-slate-50/60"
+                      >
+                        <td className="px-6 py-3">
+                          <Link
+                            href={`/tutor/trabalho/${a.id}`}
+                            className="font-display font-bold text-ink hover:text-primary-dark"
+                          >
+                            {a.title || "Trabalho"}
+                          </Link>
+                          <p className="text-sm text-slate-400">
+                            {new Date(a.createdAt).toLocaleDateString("pt-PT")}
+                            {a.dueDate ? (
+                              <span className={late ? "text-danger" : ""}>
+                                {" · prazo "}
+                                {formatDate(a.dueDate)}
+                              </span>
+                            ) : null}
+                          </p>
+                        </td>
+                        <td className="px-3 py-3 text-ink">{a.studentName}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-ink">
+                          {done}
+                          <span className="text-slate-400">/{a.items.length}</span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {late && <Badge tone="danger">Atrasado</Badge>}
+                            <Badge tone={st.tone}>{st.label}</Badge>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          {a.finalScore !== undefined ? (
+                            <span
+                              className={`font-display text-xl font-extrabold ${
+                                scoreColor(a.finalScore).text
+                              }`}
+                            >
+                              {a.finalScore.toFixed(1)}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-3 text-right">
+                          <Link
+                            href={`/tutor/trabalho/${a.id}`}
+                            aria-label={`Abrir ${a.title || "trabalho"}`}
+                            className="inline-flex text-slate-300 transition hover:text-primary-dark"
+                          >
+                            <ChevronRight size={20} />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         )}
       </section>
 

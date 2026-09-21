@@ -29,7 +29,7 @@ import {
   gerarInterpretacao,
 } from "@/lib/client";
 import { getAssignment, listStudents, createAssignment } from "@/lib/api";
-import { difficultyLabel } from "@/lib/utils";
+import { difficultyLabel, isTutorLike } from "@/lib/utils";
 import type {
   AssignmentDTO,
   Difficulty,
@@ -155,7 +155,7 @@ export default function CriarSemelhantePage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && (!user || user.role !== "tutor")) router.replace("/");
+    if (!loading && (!user || !isTutorLike(user.role))) router.replace("/");
   }, [user, loading, router]);
 
   useEffect(() => {

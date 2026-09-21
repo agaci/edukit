@@ -40,7 +40,7 @@ import {
   gerarInterpretacao,
 } from "@/lib/client";
 import { listStudents, createAssignment } from "@/lib/api";
-import { difficultyLabel, cn, exerciseLabelShort } from "@/lib/utils";
+import { difficultyLabel, cn, exerciseLabelShort, isTutorLike } from "@/lib/utils";
 import type {
   Difficulty,
   ExerciseType,
@@ -112,7 +112,7 @@ export default function CriarTrabalhoPage() {
   const [mode, setMode] = useState<"auto" | "custom" | null>(null);
 
   useEffect(() => {
-    if (!loading && (!user || user.role !== "tutor")) router.replace("/");
+    if (!loading && (!user || !isTutorLike(user.role))) router.replace("/");
   }, [user, loading, router]);
 
   if (loading || !user) {

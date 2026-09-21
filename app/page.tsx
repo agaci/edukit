@@ -19,5 +19,7 @@ export default function Home() {
 
   if (!user) return <AuthScreen />;
 
-  return user.role === "tutor" ? <TutorDashboard /> : <StudentDashboard />;
+  // O administrador e tambem tutor na pratica — mantem os alunos e os testes
+  // que ja tinha. O painel de administracao vive em /admin.
+  return user.role === "student" ? <StudentDashboard /> : <TutorDashboard />;
 }

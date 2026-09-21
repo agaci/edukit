@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/Badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { listAssignments, listStudents } from "@/lib/api";
-import { scoreColor, exerciseLabelShort, formatDate } from "@/lib/utils";
+import { scoreColor, exerciseLabelShort, formatDate, isTutorLike } from "@/lib/utils";
 import type { AssignmentDTO, StudentSummary } from "@/types";
 
 function mean(arr: number[]): number {
@@ -178,7 +178,7 @@ export default function ResultadosPage() {
     );
   }
 
-  if (user && user.role !== "tutor") {
+  if (user && !isTutorLike(user.role)) {
     return null;
   }
 
