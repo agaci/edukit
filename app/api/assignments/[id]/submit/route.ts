@@ -5,7 +5,7 @@ import {
   ObjectId,
   type AssignmentDoc,
 } from "@/lib/models";
-import { requireRole } from "@/lib/guard";
+import { apiError, requireAiAccessAs } from "@/lib/guard";
 import type { ImagePayload } from "@/lib/anthropic";
 import {
   gradeDitado,
@@ -22,7 +22,7 @@ export async function POST(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const g = await requireRole("student");
+  const g = await requireAiAccessAs("student");
   if (g.error) return g.error;
 
   try {
@@ -63,6 +63,7 @@ export async function POST(
 
     if (exercise.type === "ditado") {
       result = await gradeDitado({
+        actor: g.user,
         originalText: exercise.text,
         studentText: body.studentText,
         image,
@@ -71,6 +72,7 @@ export async function POST(
       });
     } else if (exercise.type === "compreensao") {
       result = await gradeCompreensao({
+        actor: g.user,
         originalText: exercise.text,
         studentText: body.studentText ?? "",
         gradeLevel: exercise.gradeLevel,
@@ -81,6 +83,7 @@ export async function POST(
       exercise.type === "traducao-pt-en"
     ) {
       result = await gradeTraducao({
+        actor: g.user,
         sourceText: exercise.sourceText,
         direction: exercise.type === "traducao-en-pt" ? "en-pt" : "pt-en",
         studentText: body.studentText ?? "",
@@ -102,6 +105,7 @@ export async function POST(
         );
       }
       const math = await gradeMatematica({
+        actor: g.user,
         exercises: exercise.exercises,
         image,
         gradeLevel: exercise.gradeLevel,
@@ -147,9 +151,10 @@ export async function POST(
       assignment: toAssignmentDTO(updated),
     });
   } catch (error) {
-    console.error("[/api/assignments/:id/submit]", error);
-    const message =
-      error instanceof Error ? error.message : "Erro ao corrigir o exercício.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(
+      "/api/assignments/:id/submit",
+      error,
+      "Erro ao corrigir o exercício."
+    );
   }
 }

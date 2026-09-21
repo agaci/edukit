@@ -20,7 +20,7 @@ interface AuthContextValue {
     displayName: string;
     username: string;
     password: string;
-  }) => Promise<void>;
+  }) => Promise<{ pending: boolean; message?: string }>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -53,8 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerTutor = useCallback(
     async (input: { displayName: string; username: string; password: string }) => {
-      const { user } = await api.registerTutor(input);
-      setUser(user);
+      const res = await api.registerTutor(input);
+      // Em modo "approval" a conta nasce pendente: não há sessão para guardar.
+      if (res.user) setUser(res.user);
+      return { pending: !res.user, message: res.message };
     },
     []
   );

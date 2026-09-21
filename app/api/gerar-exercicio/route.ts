@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  getAnthropic,
-  MODEL,
-  MAX_TOKENS_GENERATION,
-  extractText,
-} from "@/lib/anthropic";
+import { callClaude, MAX_TOKENS_GENERATION } from "@/lib/anthropic";
+import { apiError, requireAiAccess } from "@/lib/guard";
 import { PROMPTS } from "@/lib/prompts";
 import { parseJsonFromLLM } from "@/lib/utils";
 import type { Difficulty, Exercise } from "@/types";
@@ -20,6 +16,10 @@ interface Body {
 }
 
 export async function POST(req: Request) {
+  // Rota paga: exige sessão, conta activa e interruptor geral ligado.
+  const gate = await requireAiAccess();
+  if (gate.error) return gate.error;
+
   try {
     const body = (await req.json()) as Body;
     const gradeLevel = Number(body.gradeLevel) || 2;
@@ -28,29 +28,19 @@ export async function POST(req: Request) {
     const exerciseTypes = body.exerciseTypes ?? [];
     const userPrompt = (body.prompt ?? "").trim();
 
-    const systemPrompt = PROMPTS.gerarExerciciosMatematica(
-      gradeLevel,
-      exerciseTypes,
-      count,
-      difficulty
-    );
-
-    const anthropic = getAnthropic();
-    const message = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: MAX_TOKENS_GENERATION,
-      system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content:
-            userPrompt ||
-            `Gera ${count} exercícios adequados ao ${gradeLevel}.º ano.`,
-        },
-      ],
+    const raw = await callClaude({
+      actor: gate.user,
+      operation: "gerar-matematica",
+      system: PROMPTS.gerarExerciciosMatematica(
+        gradeLevel,
+        exerciseTypes,
+        count,
+        difficulty
+      ),
+      content:
+        userPrompt || `Gera ${count} exercícios adequados ao ${gradeLevel}.º ano.`,
+      maxTokens: MAX_TOKENS_GENERATION,
     });
-
-    const raw = extractText(message);
     const parsed = parseJsonFromLLM<{ exercises?: Exercise[] }>(raw);
 
     const exercises = (parsed.exercises ?? []).map((ex, i) => ({
@@ -67,9 +57,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ exercises });
   } catch (error) {
-    console.error("[/api/gerar-exercicio]", error);
-    const message =
-      error instanceof Error ? error.message : "Erro ao gerar os exercícios.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError("/api/gerar-exercicio", error, "Erro ao gerar os exercícios.");
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { ImagePayload } from "@/lib/anthropic";
+import { apiError, requireAiAccess } from "@/lib/guard";
 import { gradeDitado, gradeCompreensao, gradeMatematica } from "@/lib/grade";
 import type { Exercise } from "@/types";
 
@@ -17,6 +18,10 @@ interface Body {
 }
 
 export async function POST(req: Request) {
+  // Rota paga: exige sessão, conta activa e interruptor geral ligado.
+  const gate = await requireAiAccess();
+  if (gate.error) return gate.error;
+
   try {
     const body = (await req.json()) as Body;
     const gradeLevel = Number(body.gradeLevel) || 3;
@@ -26,6 +31,7 @@ export async function POST(req: Request) {
 
     if (body.type === "ditado") {
       const result = await gradeDitado({
+        actor: gate.user,
         originalText: body.originalText ?? "",
         studentText: body.studentText,
         image,
@@ -37,6 +43,7 @@ export async function POST(req: Request) {
 
     if (body.type === "compreensao") {
       const result = await gradeCompreensao({
+        actor: gate.user,
         originalText: body.originalText ?? "",
         studentText: body.studentText ?? "",
         gradeLevel,
@@ -53,6 +60,7 @@ export async function POST(req: Request) {
         );
       }
       const result = await gradeMatematica({
+        actor: gate.user,
         exercises: body.exercises ?? [],
         image,
         gradeLevel,
@@ -63,9 +71,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ error: "Tipo inválido." }, { status: 400 });
   } catch (error) {
-    console.error("[/api/corrigir]", error);
-    const message =
-      error instanceof Error ? error.message : "Erro ao corrigir o exercício.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError("/api/corrigir", error, "Erro ao corrigir o exercício.");
   }
 }

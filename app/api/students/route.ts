@@ -6,7 +6,7 @@ import {
   type UserDoc,
 } from "@/lib/models";
 import { hashSecret } from "@/lib/auth";
-import { requireRole } from "@/lib/guard";
+import { requireAnyRole } from "@/lib/guard";
 import { slugifyUsername } from "@/lib/utils";
 import type { StudentSummary } from "@/types";
 
@@ -26,7 +26,7 @@ async function findAvailableUsername(base: string): Promise<string> {
 
 // Lista os alunos do tutor autenticado.
 export async function GET() {
-  const g = await requireRole("tutor");
+  const g = await requireAnyRole(["tutor", "admin"]);
   if (g.error) return g.error;
 
   const col = await usersCol();
@@ -59,7 +59,7 @@ export async function GET() {
 
 // Cria um aluno (com username único) para o tutor autenticado.
 export async function POST(req: Request) {
-  const g = await requireRole("tutor");
+  const g = await requireAnyRole(["tutor", "admin"]);
   if (g.error) return g.error;
 
   try {

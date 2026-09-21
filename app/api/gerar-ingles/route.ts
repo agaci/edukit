@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  getAnthropic,
-  MODEL,
-  MAX_TOKENS_GENERATION,
-  extractText,
-} from "@/lib/anthropic";
+import { callClaude, MAX_TOKENS_GENERATION } from "@/lib/anthropic";
+import { apiError, requireAiAccess } from "@/lib/guard";
 import { PROMPTS } from "@/lib/prompts";
 import { parseJsonFromLLM, clamp } from "@/lib/utils";
 import type { Difficulty, McQuestion } from "@/types";
@@ -20,6 +16,10 @@ interface Body {
 }
 
 export async function POST(req: Request) {
+  // Rota paga: exige sessão, conta activa e interruptor geral ligado.
+  const gate = await requireAiAccess();
+  if (gate.error) return gate.error;
+
   try {
     const body = (await req.json()) as Body;
     const gradeLevel = Number(body.gradeLevel) || 5;
@@ -27,27 +27,21 @@ export async function POST(req: Request) {
     const kind = body.kind ?? "traducao-en-pt";
     const userPrompt = (body.prompt ?? "").trim();
 
-    const anthropic = getAnthropic();
-
     if (kind === "interpretacao-en") {
       const count = clamp(Number(body.count) || 4, 2, 8);
-      const message = await anthropic.messages.create({
-        model: MODEL,
-        max_tokens: MAX_TOKENS_GENERATION,
+      const raw = await callClaude({
+        actor: gate.user,
+        operation: "gerar-interpretacao",
         system: PROMPTS.gerarInterpretacaoIngles(gradeLevel, difficulty, count),
-        messages: [
-          {
-            role: "user",
-            content:
-              userPrompt ||
-              `Gera um texto e ${count} perguntas adequados ao ${gradeLevel}.º ano.`,
-          },
-        ],
+        content:
+          userPrompt ||
+          `Gera um texto e ${count} perguntas adequados ao ${gradeLevel}.º ano.`,
+        maxTokens: MAX_TOKENS_GENERATION,
       });
       const parsed = parseJsonFromLLM<{
         text?: string;
         questions?: Array<{ question: string; options: string[]; correctIndex: number }>;
-      }>(extractText(message));
+      }>(raw);
 
       const text = (parsed.text ?? "").trim();
       const questions: McQuestion[] = (parsed.questions ?? [])
@@ -67,26 +61,18 @@ export async function POST(req: Request) {
 
     // Traduções (en-pt / pt-en): gera o texto-fonte.
     const direction = kind === "traducao-en-pt" ? "en-pt" : "pt-en";
-    const message = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: MAX_TOKENS_GENERATION,
+    const raw = await callClaude({
+      actor: gate.user,
+      operation: "gerar-traducao",
       system: PROMPTS.gerarTraducaoTexto(gradeLevel, difficulty, direction),
-      messages: [
-        {
-          role: "user",
-          content:
-            userPrompt || `Gera um texto adequado ao ${gradeLevel}.º ano.`,
-        },
-      ],
+      content: userPrompt || `Gera um texto adequado ao ${gradeLevel}.º ano.`,
+      maxTokens: MAX_TOKENS_GENERATION,
     });
-    const parsed = parseJsonFromLLM<{ text?: string }>(extractText(message));
+    const parsed = parseJsonFromLLM<{ text?: string }>(raw);
     const text = (parsed.text ?? "").trim();
     if (!text) throw new Error("O modelo não devolveu texto.");
     return NextResponse.json({ text });
   } catch (error) {
-    console.error("[/api/gerar-ingles]", error);
-    const message =
-      error instanceof Error ? error.message : "Erro ao gerar o exercício.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError("/api/gerar-ingles", error, "Erro ao gerar o exercício.");
   }
 }

@@ -1,4 +1,4 @@
-import type { Difficulty, ModuleId } from "@/types";
+import type { Difficulty, ModuleId, Role } from "@/types";
 
 /** Concatena classes condicionalmente (utilitário simples tipo clsx). */
 export function cn(...classes: Array<string | false | null | undefined>): string {
@@ -161,4 +161,14 @@ export function slugifyUsername(name: string): string {
     .replace(/[^a-z0-9]+/g, "")
     .slice(0, 24);
   return slug || "aluno";
+}
+
+/**
+ * O administrador faz tudo o que um tutor faz: tem os seus alunos e cria os
+ * seus trabalhos. Sempre que se testar "é tutor?", é esta a pergunta certa —
+ * comparar com `"tutor"` à letra deixa o administrador de fora da sua própria
+ * aplicação.
+ */
+export function isTutorLike(role?: Role): boolean {
+  return role === "tutor" || role === "admin";
 }

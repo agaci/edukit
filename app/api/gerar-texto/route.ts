@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  getAnthropic,
-  MODEL,
-  MAX_TOKENS_GENERATION,
-  extractText,
-} from "@/lib/anthropic";
+import { callClaude, MAX_TOKENS_GENERATION } from "@/lib/anthropic";
+import { apiError, requireAiAccess } from "@/lib/guard";
 import { PROMPTS } from "@/lib/prompts";
 import { parseJsonFromLLM, countWords } from "@/lib/utils";
 import type { Difficulty, GeneratedText } from "@/types";
@@ -19,6 +15,10 @@ interface Body {
 }
 
 export async function POST(req: Request) {
+  // Rota paga: exige sessão, conta activa e interruptor geral ligado.
+  const gate = await requireAiAccess();
+  if (gate.error) return gate.error;
+
   try {
     const body = (await req.json()) as Body;
     const gradeLevel = Number(body.gradeLevel) || 3;
@@ -31,22 +31,15 @@ export async function POST(req: Request) {
         ? PROMPTS.gerarTextoCompreensao(gradeLevel, difficulty)
         : PROMPTS.gerarTextoDitado(gradeLevel, difficulty);
 
-    const anthropic = getAnthropic();
-    const message = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: MAX_TOKENS_GENERATION,
+    const raw = await callClaude({
+      actor: gate.user,
+      operation: type === "compreensao" ? "gerar-compreensao" : "gerar-ditado",
       system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content:
-            userPrompt ||
-            `Gera um texto adequado ao ${gradeLevel}.º ano sobre um tema interessante.`,
-        },
-      ],
+      content:
+        userPrompt ||
+        `Gera um texto adequado ao ${gradeLevel}.º ano sobre um tema interessante.`,
+      maxTokens: MAX_TOKENS_GENERATION,
     });
-
-    const raw = extractText(message);
     const parsed = parseJsonFromLLM<Partial<GeneratedText>>(raw);
 
     const text = (parsed.text ?? "").trim();
@@ -67,9 +60,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("[/api/gerar-texto]", error);
-    const message =
-      error instanceof Error ? error.message : "Erro ao gerar o texto.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError("/api/gerar-texto", error, "Erro ao gerar o texto.");
   }
 }

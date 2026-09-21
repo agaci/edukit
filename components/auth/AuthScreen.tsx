@@ -72,12 +72,21 @@ export function AuthScreen() {
     setBusy(true);
     try {
       if (mode === "tutor-register") {
-        await registerTutor({
+        const reg = await registerTutor({
           displayName: displayName.trim(),
           username: slugifyUsername(username || displayName),
           password: secret,
         });
-        toast("Conta criada. Bem-vindo!", "success");
+        if (reg.pending) {
+          toast(
+            reg.message ??
+              "Conta criada. Fica à espera de aprovação do administrador.",
+            "info"
+          );
+          switchMode("tutor-login");
+        } else {
+          toast("Conta criada. Bem-vindo!", "success");
+        }
       } else {
         await login(username, secret);
       }

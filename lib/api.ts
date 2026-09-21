@@ -1,10 +1,15 @@
 import type {
+  AdminOverview,
+  AdminUserRow,
   AssignmentDTO,
   AuthUser,
   ExerciseResult,
   MathResult,
   StoredExercise,
+  ServerSettings,
   StudentSummary,
+  UsageEventDTO,
+  UserStatus,
 } from "@/types";
 
 // ============================================================================
@@ -44,7 +49,7 @@ export function registerTutor(input: {
   displayName: string;
   username: string;
   password: string;
-}): Promise<{ user: AuthUser }> {
+}): Promise<{ user: AuthUser | null; pending?: boolean; message?: string }> {
   return req("/api/auth/register", {
     method: "POST",
     body: JSON.stringify(input),
@@ -125,5 +130,38 @@ export function submitAssignmentItem(
   return req(`/api/assignments/${id}/submit`, {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+// --- Administração ------------------------------------------------------------
+
+export function adminOverview(): Promise<AdminOverview> {
+  return req("/api/admin/overview");
+}
+
+export function adminUsers(): Promise<{ users: AdminUserRow[] }> {
+  return req("/api/admin/users");
+}
+
+export function adminSetUserStatus(
+  id: string,
+  status: UserStatus
+): Promise<{ ok: boolean; status: UserStatus }> {
+  return req(`/api/admin/users/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function adminUsage(limit = 50): Promise<{ events: UsageEventDTO[] }> {
+  return req(`/api/admin/usage?limit=${limit}`);
+}
+
+export function adminUpdateSettings(
+  patch: Partial<ServerSettings>
+): Promise<{ settings: ServerSettings }> {
+  return req("/api/admin/settings", {
+    method: "PATCH",
+    body: JSON.stringify(patch),
   });
 }

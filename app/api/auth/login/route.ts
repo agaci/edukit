@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { usersCol, toAuthUser } from "@/lib/models";
+import { usersCol, toAuthUser, userStatus } from "@/lib/models";
 import {
   verifySecret,
   signSession,
@@ -36,8 +36,26 @@ export async function POST(req: Request) {
       );
     }
 
+    // O estado é verificado depois do segredo, para não revelar a quem adivinha
+    // nomes de utilizador quais é que existem.
+    const status = userStatus(doc);
+    if (status === "suspended") {
+      return NextResponse.json(
+        { error: "Esta conta está suspensa. Fala com o administrador." },
+        { status: 403 }
+      );
+    }
+    if (status === "pending") {
+      return NextResponse.json(
+        { error: "Esta conta ainda está à espera de aprovação." },
+        { status: 403 }
+      );
+    }
+
     const user = toAuthUser(doc);
     const token = await signSession(user);
+    await col.updateOne({ _id: doc._id }, { $set: { lastSeenAt: new Date() } });
+
     const res = NextResponse.json({ user });
     res.cookies.set(COOKIE_NAME, token, cookieOptions);
     return res;

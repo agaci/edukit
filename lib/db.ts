@@ -41,5 +41,11 @@ async function ensureIndexes(db: Db): Promise<void> {
     .createIndex({ username: 1 }, { unique: true });
   await db.collection("assignments").createIndex({ studentId: 1, createdAt: -1 });
   await db.collection("assignments").createIndex({ tutorId: 1, createdAt: -1 });
+  // Ledger de consumo: leitura por data e por utilizador.
+  await db.collection("usage_events").createIndex({ ts: -1 });
+  await db.collection("usage_events").createIndex({ userId: 1, ts: -1 });
+  await db
+    .collection("usage_counters")
+    .createIndex({ scope: 1, key: 1, period: 1 }, { unique: true });
   g._edukitIndexesReady = true;
 }

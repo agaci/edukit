@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { assignmentsCol, toAssignmentDTO, ObjectId } from "@/lib/models";
-import { requireRole } from "@/lib/guard";
+import { requireAnyRole } from "@/lib/guard";
 import type { AssignmentItem, PastAttempt } from "@/types";
 
 export const runtime = "nodejs";
@@ -11,7 +11,7 @@ export async function POST(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const g = await requireRole("tutor");
+  const g = await requireAnyRole(["tutor", "admin"]);
   if (g.error) return g.error;
 
   try {

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { usersCol } from "@/lib/models";
-import { requireRole } from "@/lib/guard";
+import { requireAnyRole } from "@/lib/guard";
 import { slugifyUsername } from "@/lib/utils";
 
 export const runtime = "nodejs";
 
 // Sugere um username disponível a partir de um nome (verifica unicidade).
 export async function GET(req: Request) {
-  const g = await requireRole("tutor");
+  const g = await requireAnyRole(["tutor", "admin"]);
   if (g.error) return g.error;
 
   const { searchParams } = new URL(req.url);

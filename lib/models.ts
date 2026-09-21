@@ -7,6 +7,8 @@ import type {
   AuthUser,
   PastAttempt,
   Role,
+  ServerSettings,
+  UserStatus,
 } from "@/types";
 
 // ============================================================================
@@ -22,6 +24,14 @@ export interface UserDoc {
   tutorId?: ObjectId; // para alunos: tutor que o criou
   gradeLevel?: number; // para alunos: ano escolar (1 a 12)
   createdAt: Date;
+
+  // --- Administração ---------------------------------------------------------
+  /** Ausente nas contas criadas antes do painel — equivale a "active". */
+  status?: UserStatus;
+  approvedAt?: Date;
+  approvedBy?: string;
+  lastSeenAt?: Date;
+  adminNotes?: string;
 }
 
 export interface AssignmentDoc {
@@ -42,6 +52,12 @@ export interface AssignmentDoc {
   completedAt?: Date;
 }
 
+/** Documento único de configuração do servidor (_id fixo: "app"). */
+export interface SettingsDoc extends Omit<ServerSettings, "updatedAt"> {
+  _id: "app";
+  updatedAt?: Date;
+}
+
 export async function usersCol(): Promise<Collection<UserDoc>> {
   const db = await getDb();
   return db.collection<UserDoc>("users");
@@ -50,6 +66,16 @@ export async function usersCol(): Promise<Collection<UserDoc>> {
 export async function assignmentsCol(): Promise<Collection<AssignmentDoc>> {
   const db = await getDb();
   return db.collection<AssignmentDoc>("assignments");
+}
+
+export async function settingsCol(): Promise<Collection<SettingsDoc>> {
+  const db = await getDb();
+  return db.collection<SettingsDoc>("app_settings");
+}
+
+/** Contas antigas não têm `status`; a ausência conta como activa. */
+export function userStatus(doc: UserDoc): UserStatus {
+  return doc.status ?? "active";
 }
 
 export function toAuthUser(doc: UserDoc): AuthUser {

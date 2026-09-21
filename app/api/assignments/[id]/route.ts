@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { assignmentsCol, toAssignmentDTO, ObjectId } from "@/lib/models";
 import { requireUser } from "@/lib/guard";
+import { isTutorLike } from "@/lib/utils";
 
 export const runtime = "nodejs";
 
@@ -22,7 +23,7 @@ export async function GET(
   }
 
   const owns =
-    (g.user.role === "tutor" && doc.tutorId.toString() === g.user.id) ||
+    (isTutorLike(g.user.role) && doc.tutorId.toString() === g.user.id) ||
     (g.user.role === "student" && doc.studentId.toString() === g.user.id);
   if (!owns) {
     return NextResponse.json({ error: "Sem permissão." }, { status: 403 });

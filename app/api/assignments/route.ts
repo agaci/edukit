@@ -6,7 +6,8 @@ import {
   ObjectId,
   type AssignmentDoc,
 } from "@/lib/models";
-import { requireUser, requireRole } from "@/lib/guard";
+import { requireUser, requireAnyRole } from "@/lib/guard";
+import { isTutorLike } from "@/lib/utils";
 import type { AssignmentItem, StoredExercise } from "@/types";
 
 export const runtime = "nodejs";
@@ -18,7 +19,7 @@ export async function GET() {
 
   const col = await assignmentsCol();
   const filter =
-    g.user.role === "tutor"
+    isTutorLike(g.user.role)
       ? { tutorId: new ObjectId(g.user.id) }
       : { studentId: new ObjectId(g.user.id) };
 
@@ -28,7 +29,7 @@ export async function GET() {
 
 // Cria um trabalho para um ou mais alunos do tutor (atribuição em grupo).
 export async function POST(req: Request) {
-  const g = await requireRole("tutor");
+  const g = await requireAnyRole(["tutor", "admin"]);
   if (g.error) return g.error;
 
   try {

@@ -134,7 +134,7 @@ export interface SessionResult {
 // Multi-utilizador (tutor/aluno) — DTOs serializáveis (sem tipos do Mongo).
 // ============================================================================
 
-export type Role = "tutor" | "student";
+export type Role = "admin" | "tutor" | "student";
 
 export interface AuthUser {
   id: string;
@@ -232,4 +232,134 @@ export interface AssignmentDTO {
   attempts?: PastAttempt[]; // tentativas anteriores (mais antiga primeiro)
   createdAt: string;
   completedAt?: string;
+}
+
+// ============================================================================
+// Administração: estado das contas e definições globais do servidor.
+// ============================================================================
+
+/** Contas antigas não têm o campo; a ausência equivale a "active". */
+export type UserStatus = "active" | "pending" | "suspended";
+
+/**
+ * open     — qualquer pessoa cria conta e usa logo
+ * approval — qualquer pessoa cria conta, mas fica à espera de aprovação
+ * closed   — ninguém cria conta
+ */
+export type RegistrationMode = "open" | "approval" | "closed";
+
+export interface ServerSettings {
+  /** Interruptor geral: a false, nenhuma rota chama a API do Claude. */
+  apiEnabled: boolean;
+  /** Mensagem mostrada ao utilizador quando apiEnabled é false. */
+  disabledMessage: string;
+  registrationMode: RegistrationMode;
+  /** Modelo usado em todas as chamadas. Só o administrador o muda. */
+  model: ClaudeModelId;
+  /** Euros por dólar, para converter o teto em euros no custo real em USD. */
+  eurPerUsd: number;
+  /** Fração do teto a partir da qual se avisa (0,8 = 80%). */
+  warnThreshold: number;
+  /** Teto mensal para toda a instalação, em cêntimos de euro. */
+  globalMonthlyBudgetCents: number;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+// --- Modelos e consumo ---------------------------------------------------------
+
+/**
+ * Modelos permitidos. Fechado de propósito: o custo por token difere em 5x
+ * entre os extremos, por isso não se escreve um identificador à mão em lado
+ * nenhum — escolhe-se daqui.
+ */
+export type ClaudeModelId =
+  | "claude-sonnet-5"
+  | "claude-haiku-4-5"
+  | "claude-opus-4-8";
+
+export type Operation =
+  | "gerar-ditado"
+  | "gerar-compreensao"
+  | "gerar-matematica"
+  | "gerar-traducao"
+  | "gerar-interpretacao"
+  | "corrigir-ditado"
+  | "corrigir-compreensao"
+  | "corrigir-traducao"
+  | "corrigir-matematica";
+
+/** Uma chamada à API, como fica registada no ledger. */
+export interface UsageEventDTO {
+  id: string;
+  ts: string;
+  userId: string;
+  username: string;
+  role: Role;
+  operation: Operation;
+  model: ClaudeModelId;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  imageBytes?: number;
+  /** Custo em milionésimos de dólar. Inteiro — nunca vírgula flutuante. */
+  costMicros: number;
+  latencyMs: number;
+  ok: boolean;
+  errorCode?: string;
+}
+
+export interface SpendSummary {
+  periodMonth: string; // "2026-09"
+  costMicros: number;
+  calls: number;
+  budgetMicros: number;
+  /** 0 a 1+; acima de 1 significa que o teto foi ultrapassado. */
+  ratio: number;
+}
+
+// --- Painel de administração ---------------------------------------------------
+
+export interface AdminUserRow {
+  id: string;
+  username: string;
+  displayName: string;
+  role: Role;
+  status: UserStatus;
+  gradeLevel?: number;
+  /** Para alunos: nome do tutor que os criou. */
+  tutorName?: string;
+  createdAt: string;
+  lastSeenAt?: string;
+  /** Trabalhos criados (tutor) ou recebidos (aluno). */
+  assignmentsCount: number;
+  completedCount: number;
+  /** Só para tutores: quantos alunos tem. */
+  studentsCount?: number;
+  /** Gasto no mês corrente, em milionésimos de dólar. */
+  costMicros: number;
+  calls: number;
+}
+
+export interface OperationSpend {
+  operation: Operation;
+  calls: number;
+  costMicros: number;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export interface AdminOverview {
+  spend: SpendSummary;
+  settings: ServerSettings;
+  totals: {
+    admins: number;
+    tutors: number;
+    students: number;
+    pending: number;
+    assignments: number;
+    completed: number;
+  };
+  byOperation: OperationSpend[];
 }

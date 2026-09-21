@@ -1,9 +1,8 @@
 import {
-  getAnthropic,
-  MODEL,
+  callClaude,
   MAX_TOKENS_CORRECTION,
-  extractText,
   buildUserContent,
+  type Actor,
   type ImagePayload,
 } from "@/lib/anthropic";
 import { PROMPTS } from "@/lib/prompts";
@@ -14,29 +13,42 @@ import type {
   MathResult,
   McAnswer,
   McQuestion,
+  Operation,
 } from "@/types";
 
 // ============================================================================
 // Lógica de correção partilhada (server-only). Usada pela API de correção
 // avulsa e pela submissão de trabalhos atribuídos.
+//
+// Todas as funções recebem o `actor` porque a correção é a operação mais cara
+// da aplicação: sem saber quem a pediu, não há medição possível.
 // ============================================================================
 
+/** Tamanho real da imagem a partir do base64, para o ledger. */
+function bytesOf(image?: ImagePayload): number | undefined {
+  if (!image) return undefined;
+  return Math.round((image.base64.length * 3) / 4);
+}
+
 async function runCorrection(
+  actor: Actor,
+  operation: Operation,
   systemPrompt: string,
   userText: string,
   image?: ImagePayload
 ): Promise<string> {
-  const anthropic = getAnthropic();
-  const message = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: MAX_TOKENS_CORRECTION,
+  return callClaude({
+    actor,
+    operation,
     system: systemPrompt,
-    messages: [{ role: "user", content: buildUserContent(userText, image) }],
+    content: buildUserContent(userText, image),
+    maxTokens: MAX_TOKENS_CORRECTION,
+    imageBytes: bytesOf(image),
   });
-  return extractText(message);
 }
 
 export async function gradeDitado(input: {
+  actor: Actor;
   originalText: string;
   studentText?: string;
   image?: ImagePayload;
@@ -47,6 +59,8 @@ export async function gradeDitado(input: {
     ? "Lê o ditado manuscrito na imagem e corrige-o comparando com o texto original."
     : `Texto escrito pelo aluno:\n${input.studentText ?? ""}`;
   const raw = await runCorrection(
+    input.actor,
+    "corrigir-ditado",
     PROMPTS.corrigirDitado(input.originalText, input.gradeLevel),
     userText,
     input.image
@@ -62,12 +76,15 @@ export async function gradeDitado(input: {
 }
 
 export async function gradeCompreensao(input: {
+  actor: Actor;
   originalText: string;
   studentText: string;
   gradeLevel: number;
   timeSpent?: number;
 }): Promise<ExerciseResult> {
   const raw = await runCorrection(
+    input.actor,
+    "corrigir-compreensao",
     PROMPTS.corrigirCompreensao(input.originalText, input.gradeLevel),
     `Texto escrito pelo aluno sobre o que leu:\n${input.studentText}`
   );
@@ -82,6 +99,7 @@ export async function gradeCompreensao(input: {
 }
 
 export async function gradeTraducao(input: {
+  actor: Actor;
   sourceText: string;
   direction: "en-pt" | "pt-en";
   studentText: string;
@@ -89,6 +107,8 @@ export async function gradeTraducao(input: {
   timeSpent?: number;
 }): Promise<ExerciseResult> {
   const raw = await runCorrection(
+    input.actor,
+    "corrigir-traducao",
     PROMPTS.corrigirTraducao(input.sourceText, input.direction, input.gradeLevel),
     `Tradução escrita pelo aluno:\n${input.studentText}`
   );
@@ -101,7 +121,7 @@ export async function gradeTraducao(input: {
   };
 }
 
-// Interpretação (escolha múltipla) — corrigida localmente, sem IA.
+// Interpretação (escolha múltipla) — corrigida localmente, sem IA e sem custo.
 export function gradeInterpretacao(input: {
   questions: McQuestion[];
   answers: number[];
@@ -132,12 +152,15 @@ export function gradeInterpretacao(input: {
 }
 
 export async function gradeMatematica(input: {
+  actor: Actor;
   exercises: Exercise[];
   image: ImagePayload;
   gradeLevel: number;
   timeSpent?: number;
 }): Promise<MathResult> {
   const raw = await runCorrection(
+    input.actor,
+    "corrigir-matematica",
     PROMPTS.corrigirMatematica(input.exercises, input.gradeLevel),
     "Analisa a fotografia da resolução manuscrita e corrige cada exercício da lista.",
     input.image
