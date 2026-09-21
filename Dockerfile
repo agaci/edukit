@@ -14,7 +14,12 @@ COPY . .
 
 # Os segredos (ANTHROPIC_API_KEY, MONGODB_URI, AUTH_SECRET) são lidos em
 # runtime — não são necessários no build (a ligação ao Mongo é preguiçosa).
-RUN npm run build
+#
+# Chama o next directamente em vez de `npm run build`: o wrapper
+# scripts/next-cased.mjs existe para corrigir a caixa do caminho no Windows,
+# problema que não existe dentro de um contentor Linux. Menos uma peça no
+# caminho crítico do build.
+RUN node node_modules/next/dist/bin/next build
 
 # ── Etapa 3: runner (imagem final mínima) ──────────────────────────────────
 FROM node:20-alpine AS runner
@@ -32,6 +37,12 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Ferramentas de administração por linha de comandos (seed-admin, users, usage,
+# settings). Sem elas não há forma de criar o primeiro administrador nem de
+# aprovar contas no servidor. Resolvem o driver do Mongo a partir do
+# node_modules que o output standalone já traz.
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 
 USER nextjs
 
